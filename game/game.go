@@ -1,10 +1,9 @@
-package app
+package game
 
 type Game struct {
-	turn      bool
-	board     [8][8]Tile
-	ready     PlayerReady
-	gameState int
+	PlayerTurn int
+	Board      [8][8]Tile
+	GameState  int
 }
 
 type Piece struct {
@@ -26,9 +25,9 @@ type Tile struct {
 
 func NewGame() *Game {
 	return &Game{
-		turn:  true,
-		board: newBoard(),
-		ready: PlayerReady{},
+		PlayerTurn: 0,
+		Board:      newBoard(),
+		GameState:  0,
 	}
 }
 
