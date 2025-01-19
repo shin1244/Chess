@@ -1,35 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>Chess Game</title>
-    <style>
-        .color-display {
-            font-size: 48px;
-            text-align: center;
-            margin-top: 100px;
-            font-family: Arial, sans-serif;
-        }
-        
-        .white {
-            color: #000;
-            background-color: #fff;
-        }
-        
-        .black {
-            color: #fff;
-            background-color: #000;
-        }
-        
-        canvas {
-            display: block;
-            margin: 0 auto;
-            background-color: #f0d9b5;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>체스판</title>
 </head>
 <body>
-    <div id="colorDisplay" class="color-display">연결 중...</div>
-    <canvas id="chessBoard" width="640" height="640"></canvas>
+    <canvas id="chessboard" width="640" height="640"></canvas>
     <script src="webSocket.js"></script>
 </body>
-</html> 
+</html>

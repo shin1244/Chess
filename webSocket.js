@@ -1,54 +1,65 @@
-const ws = new WebSocket('ws://localhost:3000/ws');
-let count = 0;
-const colors = ['#00cc00', '#cc8400', '#f0d9b5', '#b58863'];
-const tileSize = 80;
-const canvas = document.getElementById('chessBoard');
-const context = canvas.getContext('2d');
+function loadPiece(piecePath) {
+    const img = new Image();
+    img.src = piecePath;
+    return img;
+}
 
-ws.onopen = () => {
-    console.log('서버에 연결되었습니다');
-};
 
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log(data);
-    if (data.type === 'count') {
-        count = data.count;
+$(document).ready(function() {
+    const canvas = $('#chessboard')[0];
+    const context = canvas.getContext('2d');
+    const squareSize = 80;
+    const pieces = {
+        whitePawn: loadPiece('assets/whitePawn.png'),
+        blackPawn: loadPiece('assets/blackPawn.png'),
+        whiteKnight: loadPiece('assets/whiteKnight.png'),
+        blackKnight: loadPiece('assets/blackKnight.png'),
+        whiteBishop: loadPiece('assets/whiteBishop.png'),
+        blackBishop: loadPiece('assets/blackBishop.png'),
+        whiteRook: loadPiece('assets/whiteRook.png'),
+        blackRook: loadPiece('assets/blackRook.png'),
+        whiteKing: loadPiece('assets/whiteKing.png'),
+        blackKing: loadPiece('assets/blackKing.png'),
+    };
 
-        const display = document.getElementById('colorDisplay');
-        display.textContent = count;
+    
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            context.fillStyle = (row + col) % 2 === 0 ? 'white' : 'gray';
+            context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
+        }
     }
 
-    if (data.type === 'newGame') {
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                const x = col * tileSize;
-                const y = row * tileSize;
-                const colorIndex = (row + col) % 2;
-                context.fillStyle = colors[colorIndex+2];
-                context.fillRect(x, y, tileSize, tileSize);
-            }
+    const socket = new WebSocket('ws://localhost:3000/ws');
+
+    socket.onmessage = function(event) {
+        const message = JSON.parse(event.data);
+        if (message.type === 'spawn') {
+            console.log(message.piece);
+            console.log(message.position);
+            console.log(pieces[message.piece]);
+            context.drawImage(pieces[message.piece], message.position.col * squareSize, message.position.row * squareSize, squareSize, squareSize);
         }
-    }  
-};
+    };
 
-canvas.addEventListener('click', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const col = Math.floor(x / tileSize);
-    const row = Math.floor(y / tileSize);
-
-    // 클릭된 타일의 위치를 서버에 전송
-    const message = JSON.stringify({ type: 1, row: row, col: col });
-    console.log(message);
-    ws.send(message);
+    $(canvas).on('click', function(event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        // 클릭한 위치의 체스판 좌표 계산
+        const col = Math.floor(x / squareSize);
+        const row = Math.floor(y / squareSize);
+        
+        // 웹소켓으로 클릭 위치 전송
+        const message = {
+            type: 'click',
+            position: {
+                row: row,
+                col: col
+            }
+        };
+        
+        socket.send(JSON.stringify(message));
+    });
 });
-
-ws.onerror = (error) => {
-    document.getElementById('colorDisplay').textContent = '연결 오류!';
-};
-
-ws.onclose = () => {
-    document.getElementById('colorDisplay').textContent = '연결이 끊어졌습니다';
-};
