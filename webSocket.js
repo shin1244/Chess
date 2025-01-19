@@ -22,23 +22,24 @@ $(document).ready(function() {
         blackKing: loadPiece('assets/blackKing.png'),
     };
 
-    
-    for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-            context.fillStyle = (row + col) % 2 === 0 ? 'white' : 'gray';
-            context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
-        }
-    }
-
     const socket = new WebSocket('ws://localhost:3000/ws');
 
     socket.onmessage = function(event) {
         const message = JSON.parse(event.data);
         if (message.type === 'spawn') {
-            console.log(message.piece);
-            console.log(message.position);
-            console.log(pieces[message.piece]);
             context.drawImage(pieces[message.piece], message.position.col * squareSize, message.position.row * squareSize, squareSize, squareSize);
+        }
+        if (message.type === 'board') {
+            board = message.board
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    context.fillStyle = board[row][col].Color === 2 ? '#6b8e23' : '#d3d3d3';
+                    context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
+                    if (board[row][col].Piece !== "") {
+                        context.drawImage(pieces[board[row][col].Piece], col * squareSize, row * squareSize, squareSize, squareSize);
+                    }
+                }
+            }
         }
     };
 
