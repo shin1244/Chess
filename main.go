@@ -8,8 +8,9 @@ import (
 )
 
 type Message struct {
-	Type     string `json:"type"`
-	Position struct {
+	Type        string `json:"type"`
+	PlayerColor int    `json:"player_color"`
+	Position    struct {
 		Row int `json:"row"`
 		Col int `json:"col"`
 	} `json:"position"`
@@ -32,6 +33,8 @@ var playerReady = []bool{}                           // 준비 완료하면 appe
 var count = 0                                        // 유저 수
 var gameState = 0                                    // 1: 세팅, 2: 게임
 var board = [8][8]Tile{}                             // 체스판(기물 포함)
+var turn = 0                                         // 0: 백, 1: 흑
+var clickType = 0                                    // 0: 클릭, 1: 이동
 
 func initBoard() {
 	for i := 0; i < 8; i++ {
@@ -58,7 +61,7 @@ func main() {
 
 var upgrader = websocket.Upgrader{}
 
-func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+func HandleWebSocket(w http.ResponseWriter, r *http.Request) { // 웹소켓 연결
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -70,11 +73,17 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		playerPiece[conn] = []string{"Pawn", "Knight", "Bishop", "Rook", "King"}
 		count++
 	}
+
+	conn.WriteJSON(&Message{
+		Type:        "color",
+		PlayerColor: playerColor[conn],
+	})
+
 	conn.WriteJSON(&Board{
 		Type:  "board",
 		Board: board,
 	})
-
+	// 2명이 들어오기 전까지 기물을 놓을 수 없게 해야함
 	for {
 		var message Message
 		err := conn.ReadJSON(&message)
@@ -82,6 +91,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			break
 		}
+		log.Println(message)
 		if gameState == 0 {
 			setupState(conn, message)
 		} else if gameState == 1 {
@@ -105,7 +115,7 @@ func getPiece(conn *websocket.Conn) string {
 		piece := "black" + pieces[lastIdx]
 		playerPiece[conn] = pieces[:lastIdx]
 		if len(playerPiece[conn]) == 0 {
-			playerReady = append(playerReady, true)
+			playerReady = append(playerReady, false)
 		}
 		return piece
 	}
@@ -113,15 +123,14 @@ func getPiece(conn *websocket.Conn) string {
 
 func placePiece(conn *websocket.Conn, message Message) {
 	if canPlace(conn, message) {
-		piece := getPiece(conn)
-		setupMessage := &Message{
+		piece := getPiece(conn)   // 백엔드에 기물 위치 전달
+		setupMessage := &Message{ // 프론트엔드에 기물 위치 전달
 			Type:     "spawn",
 			Position: message.Position,
 			Piece:    piece,
 		}
 		conn.WriteJSON(setupMessage)
 		board[message.Position.Row][message.Position.Col].Piece = piece
-		log.Println(board)
 	} else {
 		log.Println("잘못된 위치 혹은 기물 없음")
 	}
@@ -149,7 +158,27 @@ func canPlace(conn *websocket.Conn, message Message) bool {
 }
 
 func playState(conn *websocket.Conn, message Message) {
-
+	if message.Type == "click" {
+		if turn == playerColor[conn] {
+			if clickType == 0 { // 첫 클릭일 때
+				if board[message.Position.Row][message.Position.Col].Piece != "" {
+					clickType = 1
+					conn.WriteJSON(&Message{
+						Type:     "click",
+						Position: message.Position,
+						Piece:    board[message.Position.Row][message.Position.Col].Piece,
+					})
+				}
+			} else { // 두번째 클릭일 때
+				conn.WriteJSON(&Message{
+					Type:     "move",
+					Position: message.Position,
+				})
+				clickType = 0
+				turn = (turn + 1) % 2
+			}
+		}
+	}
 }
 
 func broadcastBoard() {
