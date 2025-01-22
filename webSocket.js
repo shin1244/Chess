@@ -31,6 +31,7 @@ $(document).ready(function() {
 
     socket.onmessage = function(event) {
         const message = JSON.parse(event.data);
+        console.log('받은 메시지:', message); // 디버깅용 로그
 
         if (message.type === 'color') {
             color = message.player_color; // 서버로부터 받은 색상 정보를 저장
@@ -55,11 +56,13 @@ $(document).ready(function() {
         }
 
         if (message.type === 'click') {
-            const piece = message.piece;
-            const row = message.position.row;
-            const col = message.position.col;
-            const possibleMoves = calculatePossibleMoves(piece, row, col);
-            drawPossibleMoves(possibleMoves);
+            message.position.forEach(position => {
+            context.beginPath();
+            context.arc(position.col * squareSize + squareSize/2, position.row * squareSize + squareSize/2, 10, 0, 2 * Math.PI);
+            context.fillStyle = "red";
+            context.fill();
+            context.closePath();
+            });
         }
 
         // if (message.type === 'move') {
@@ -88,101 +91,4 @@ $(document).ready(function() {
         
         socket.send(JSON.stringify(message));
     });
-
-    function calculatePossibleMoves(piece, row, col) {
-        const moves = [];
-        const directions = {
-            Knight: [
-                { row: -2, col: -1 }, { row: -2, col: 1 },
-                { row: -1, col: -2 }, { row: -1, col: 2 },
-                { row: 1, col: -2 }, { row: 1, col: 2 },
-                { row: 2, col: -1 }, { row: 2, col: 1 }
-            ],
-            Bishop: [
-                { row: -1, col: -1 }, { row: -1, col: 1 },
-                { row: 1, col: -1 }, { row: 1, col: 1 }
-            ],
-            Rook: [
-                { row: -1, col: 0 }, { row: 1, col: 0 },
-                { row: 0, col: -1 }, { row: 0, col: 1 }
-            ],
-            King: [
-                { row: -1, col: -1 }, { row: -1, col: 0 }, { row: -1, col: 1 },
-                { row: 0, col: -1 }, { row: 0, col: 1 },
-                { row: 1, col: -1 }, { row: 1, col: 0 }, { row: 1, col: 1 }
-            ]
-        };
-
-        // Pawn 이동 가능성 계산
-        if (piece.includes('Pawn')) {
-            const direction = piece.includes('white') ? -1 : 1;
-            const newRow = row + direction;
-            if (newRow >= 0 && newRow < 8) {
-                moves.push({ row: newRow, col: col });
-            }
-        }
-
-        // Knight 이동 가능성 계산
-        if (piece.includes('Knight')) {
-            directions.Knight.forEach(dir => {
-                const newRow = row + dir.row;
-                const newCol = col + dir.col;
-                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                    moves.push({ row: newRow, col: newCol });
-                }
-            });
-        }
-
-        // Bishop 이동 가능성 계산
-        if (piece.includes('Bishop')) {
-            directions.Bishop.forEach(dir => {
-                for (let i = 1; i < 8; i++) {
-                    const newRow = row + dir.row * i;
-                    const newCol = col + dir.col * i;
-                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                        moves.push({ row: newRow, col: newCol });
-                    } else {
-                        break;
-                    }
-                }
-            });
-        }
-
-        // Rook 이동 가능성 계산
-        if (piece.includes('Rook')) {
-            directions.Rook.forEach(dir => {
-                for (let i = 1; i < 8; i++) {
-                    const newRow = row + dir.row * i;
-                    const newCol = col + dir.col * i;
-                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                        moves.push({ row: newRow, col: newCol });
-                    } else {
-                        break;
-                    }
-                }
-            });
-        }
-
-        // King 이동 가능성 계산
-        if (piece.includes('King')) {
-            directions.King.forEach(dir => {
-                const newRow = row + dir.row;
-                const newCol = col + dir.col;
-                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                    moves.push({ row: newRow, col: newCol });
-                }
-            });
-        }
-
-        return moves;
-    }
-
-    function drawPossibleMoves(moves) {
-        moves.forEach(move => {
-            context.beginPath();
-            context.arc((move.col + 0.5) * squareSize, (move.row + 0.5) * squareSize, 5, 0, 2 * Math.PI);
-            context.fillStyle = 'red';
-            context.fill();
-        });
-    }
 });

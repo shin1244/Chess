@@ -7,14 +7,16 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type Position struct {
+	Row int `json:"row"`
+	Col int `json:"col"`
+}
+
 type Message struct {
-	Type        string `json:"type"`
-	PlayerColor int    `json:"player_color"`
-	Position    struct {
-		Row int `json:"row"`
-		Col int `json:"col"`
-	} `json:"position"`
-	Piece string `json:"piece"`
+	Type        string   `json:"type"`
+	PlayerColor int      `json:"player_color"`
+	Position    Position `json:"position"`
+	Piece       string   `json:"piece"`
 }
 
 type Board struct {
@@ -27,6 +29,11 @@ type Tile struct {
 	Piece string
 }
 
+type click struct {
+	Type     string     `json:"type"`
+	Position []Position `json:"position"`
+}
+
 var playerColor = make(map[*websocket.Conn]int)      // 0: 백, 1: 흑
 var playerPiece = make(map[*websocket.Conn][]string) // 백, 흑 체스말
 var playerReady = []bool{}                           // 준비 완료하면 append
@@ -34,7 +41,30 @@ var count = 0                                        // 유저 수
 var gameState = 0                                    // 1: 세팅, 2: 게임
 var board = [8][8]Tile{}                             // 체스판(기물 포함)
 var turn = 0                                         // 0: 백, 1: 흑
-var clickType = 0                                    // 0: 클릭, 1: 이동
+var possibleMoves = []Position{}                     // 비어있을 때: 클릭, 채워져 있을 때: 이동
+var selectedPiece = Position{}
+
+var directions = map[string][]Position{
+	"Knight": {
+		{Row: -2, Col: -1}, {Row: -2, Col: 1},
+		{Row: -1, Col: -2}, {Row: -1, Col: 2},
+		{Row: 1, Col: -2}, {Row: 1, Col: 2},
+		{Row: 2, Col: -1}, {Row: 2, Col: 1},
+	},
+	"Bishop": {
+		{Row: -1, Col: -1}, {Row: -1, Col: 1},
+		{Row: 1, Col: -1}, {Row: 1, Col: 1},
+	},
+	"Rook": {
+		{Row: -1, Col: 0}, {Row: 1, Col: 0},
+		{Row: 0, Col: -1}, {Row: 0, Col: 1},
+	},
+	"King": {
+		{Row: -1, Col: -1}, {Row: -1, Col: 0}, {Row: -1, Col: 1},
+		{Row: 0, Col: -1}, {Row: 0, Col: 1},
+		{Row: 1, Col: -1}, {Row: 1, Col: 0}, {Row: 1, Col: 1},
+	},
+}
 
 func initBoard() {
 	for i := 0; i < 8; i++ {
@@ -91,7 +121,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) { // 웹소켓 연�
 			log.Println(err)
 			break
 		}
-		log.Println(message)
 		if gameState == 0 {
 			setupState(conn, message)
 		} else if gameState == 1 {
@@ -119,12 +148,13 @@ func getPiece(conn *websocket.Conn) string {
 		}
 		return piece
 	}
+	// 체스말은 색깔_종류 형식으로 저장
 }
 
 func placePiece(conn *websocket.Conn, message Message) {
 	if canPlace(conn, message) {
-		piece := getPiece(conn)   // 백엔드에 기물 위치 전달
-		setupMessage := &Message{ // 프론트엔드에 기물 위치 전달
+		piece := getPiece(conn)
+		setupMessage := &Message{
 			Type:     "spawn",
 			Position: message.Position,
 			Piece:    piece,
@@ -160,22 +190,29 @@ func canPlace(conn *websocket.Conn, message Message) bool {
 func playState(conn *websocket.Conn, message Message) {
 	if message.Type == "click" {
 		if turn == playerColor[conn] {
-			if clickType == 0 { // 첫 클릭일 때
+			if len(possibleMoves) == 0 { // 첫 클릭일 때
 				if board[message.Position.Row][message.Position.Col].Piece != "" {
-					clickType = 1
-					conn.WriteJSON(&Message{
+					possibleMoves = calculatePossibleMoves(board[message.Position.Row][message.Position.Col].Piece, message.Position.Row, message.Position.Col)
+					selectedPiece = message.Position
+					log.Println(possibleMoves, message.Position)
+					conn.WriteJSON(&click{
 						Type:     "click",
-						Position: message.Position,
-						Piece:    board[message.Position.Row][message.Position.Col].Piece,
+						Position: possibleMoves,
 					})
 				}
 			} else { // 두번째 클릭일 때
-				conn.WriteJSON(&Message{
-					Type:     "move",
-					Position: message.Position,
-				})
-				clickType = 0
-				turn = (turn + 1) % 2
+				for _, move := range possibleMoves {
+					if move.Row == message.Position.Row && move.Col == message.Position.Col {
+						board[message.Position.Row][message.Position.Col].Piece = board[selectedPiece.Row][selectedPiece.Col].Piece
+						board[selectedPiece.Row][selectedPiece.Col].Piece = ""
+						possibleMoves = []Position{}
+						turn = (turn + 1) % 2
+						broadcastBoard()
+
+						log.Println(board)
+						break
+					}
+				}
 			}
 		}
 	}
@@ -188,4 +225,29 @@ func broadcastBoard() {
 			Board: board,
 		})
 	}
+}
+func calculatePossibleMoves(piece string, row, col int) []Position {
+	pieceType := piece[5:]
+	possibleMoves := []Position{}
+
+	for _, direction := range directions[pieceType] {
+		if pieceType == "Rook" || pieceType == "Bishop" {
+			for i := 1; i < 8; i++ {
+				newRow := row + direction.Row*i
+				newCol := col + direction.Col*i
+				if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && board[newRow][newCol].Piece == "" {
+					possibleMoves = append(possibleMoves, Position{Row: newRow, Col: newCol})
+				} else {
+					break
+				}
+			}
+		} else {
+			newRow := row + direction.Row
+			newCol := col + direction.Col
+			if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && board[newRow][newCol].Piece == "" {
+				possibleMoves = append(possibleMoves, Position{Row: newRow, Col: newCol})
+			}
+		}
+	}
+	return possibleMoves
 }
