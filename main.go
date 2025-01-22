@@ -130,8 +130,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) { // 웹소켓 연�
 	})
 	// 2명이 들어오기 전까지 기물을 놓을 수 없게 해야함
 
-	log.Println(whiteGoal, blackGoal)
-
 	for {
 		var message Message
 		err := conn.ReadJSON(&message)
@@ -212,7 +210,6 @@ func playState(conn *websocket.Conn, message Message) {
 				if board[message.Position.Row][message.Position.Col].Piece != "" {
 					possibleMoves = calculatePossibleMoves(board[message.Position.Row][message.Position.Col].Piece, message.Position.Row, message.Position.Col)
 					selectedPiece = message.Position
-					log.Println(possibleMoves, message.Position)
 					conn.WriteJSON(&click{
 						Type:     "click",
 						Position: possibleMoves,

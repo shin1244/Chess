@@ -69,10 +69,6 @@ $(document).ready(function() {
             context.closePath();
             });
         }
-
-        // if (message.type === 'move') {
-        //     context.drawImage(pieces[message.piece], message.position.col * squareSize, message.position.row * squareSize, squareSize, squareSize);
-        // }
     };
 
     $(canvas).on('click', function(event) {
