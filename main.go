@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -22,6 +23,7 @@ type Message struct {
 type Board struct {
 	Type  string     `json:"type"`
 	Board [8][8]Tile `json:"board"`
+	Goal  []Position `json:"goal"`
 }
 
 type Tile struct {
@@ -43,6 +45,13 @@ var board = [8][8]Tile{}                             // 체스판(기물 포함)
 var turn = 0                                         // 0: 백, 1: 흑
 var possibleMoves = []Position{}                     // 비어있을 때: 클릭, 채워져 있을 때: 이동
 var selectedPiece = Position{}
+var whiteGoal = []Position{}
+var blackGoal = []Position{}
+
+func init() {
+	whiteGoal = initGoal(0)
+	blackGoal = initGoal(1)
+}
 
 var directions = map[string][]Position{
 	"Knight": {
@@ -112,8 +121,17 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) { // 웹소켓 연�
 	conn.WriteJSON(&Board{
 		Type:  "board",
 		Board: board,
+		Goal: func() []Position {
+			if playerColor[conn] == 0 {
+				return whiteGoal
+			}
+			return blackGoal
+		}(),
 	})
 	// 2명이 들어오기 전까지 기물을 놓을 수 없게 해야함
+
+	log.Println(whiteGoal, blackGoal)
+
 	for {
 		var message Message
 		err := conn.ReadJSON(&message)
@@ -148,7 +166,7 @@ func getPiece(conn *websocket.Conn) string {
 		}
 		return piece
 	}
-	// 체스말은 색깔_종류 형식으로 저장
+	// 체스말은 색깔종류 형식으로 저장
 }
 
 func placePiece(conn *websocket.Conn, message Message) {
@@ -208,10 +226,19 @@ func playState(conn *websocket.Conn, message Message) {
 						possibleMoves = []Position{}
 						turn = (turn + 1) % 2
 						broadcastBoard()
-
-						log.Println(board)
+						// 3가지를 체크해야함
+						// 1. 둘러 싸인 기물이 있는지
+						// 2. 색칠을 완료했는지
+						// 3. 폰이 움직이지 못하는지
 						break
 					}
+				}
+				if len(possibleMoves) != 0 {
+					possibleMoves = []Position{}
+					conn.WriteJSON(&Board{
+						Type:  "board",
+						Board: board,
+					})
 				}
 			}
 		}
@@ -223,6 +250,12 @@ func broadcastBoard() {
 		conn.WriteJSON(&Board{
 			Type:  "board",
 			Board: board,
+			Goal: func() []Position {
+				if playerColor[conn] == 0 {
+					return whiteGoal
+				}
+				return blackGoal
+			}(),
 		})
 	}
 }
@@ -250,4 +283,18 @@ func calculatePossibleMoves(piece string, row, col int) []Position {
 		}
 	}
 	return possibleMoves
+}
+
+func initGoal(color int) []Position {
+	goal := []Position{}
+	if color == 0 {
+		for i := 5; i > 0; i-- {
+			goal = append(goal, Position{Row: i, Col: rand.Intn(8)})
+		}
+	} else {
+		for i := 2; i < 6; i++ {
+			goal = append(goal, Position{Row: i, Col: rand.Intn(8)})
+		}
+	}
+	return goal
 }

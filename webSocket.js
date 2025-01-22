@@ -51,6 +51,11 @@ $(document).ready(function() {
                     if (board[row][col].Piece !== "") {
                         context.drawImage(pieces[board[row][col].Piece], col * squareSize, row * squareSize, squareSize, squareSize);
                     }
+                    if (message.goal.some(pos => pos.row === row && pos.col === col)) {
+                        context.strokeStyle = "red";
+                        context.lineWidth = 3;
+                        context.strokeRect(col * squareSize, row * squareSize, squareSize, squareSize);
+                    }
                 }
             }
         }
