@@ -12,6 +12,9 @@
 
 ## 규칙 설명
 <img src="https://github.com/user-attachments/assets/3a5df4d5-b343-4068-8764-ecd4c66e1570">
+
 목표(빨간 테두리) 타일을 모두 자신의 색으로 색칠하면 승리합니다.
+
 <img src="https://github.com/user-attachments/assets/87f1b5a6-972d-49cd-8091-4c2e70a56ade">
+
 이동 경로를 색칠 할 수 있습니다.
