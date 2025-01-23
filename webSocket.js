@@ -21,6 +21,7 @@ $(document).ready(function() {
         whiteKing: loadPiece('assets/whiteKing.png'),
         blackKing: loadPiece('assets/blackKing.png'),
     };
+    const boardColor = ['#FF69B4', '#4169E1', '#6b8e23', '#d3d3d3'];
 
     const socket = new WebSocket('ws://localhost:3000/ws');
     let color = null; // 플레이어의 색상 정보를 저장할 변수
@@ -31,7 +32,6 @@ $(document).ready(function() {
 
     socket.onmessage = function(event) {
         const message = JSON.parse(event.data);
-        console.log('받은 메시지:', message); // 디버깅용 로그
 
         if (message.type === 'color') {
             color = message.player_color; // 서버로부터 받은 색상 정보를 저장
@@ -44,9 +44,10 @@ $(document).ready(function() {
 
         if (message.type === 'board') {
             const board = message.board;
+            console.log(board);
             for (let row = 0; row < 8; row++) {
                 for (let col = 0; col < 8; col++) {
-                    context.fillStyle = board[row][col].Color === 2 ? '#6b8e23' : '#d3d3d3';
+                    context.fillStyle = boardColor[board[row][col].Color];
                     context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
                     if (board[row][col].Piece !== "") {
                         context.drawImage(pieces[board[row][col].Piece], col * squareSize, row * squareSize, squareSize, squareSize);

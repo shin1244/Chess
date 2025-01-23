@@ -40,17 +40,16 @@ var playerColor = make(map[*websocket.Conn]int)      // 0: 백, 1: 흑
 var playerPiece = make(map[*websocket.Conn][]string) // 백, 흑 체스말
 var playerReady = []bool{}                           // 준비 완료하면 append
 var count = 0                                        // 유저 수
-var gameState = 0                                    // 1: 세팅, 2: 게임
+var gameState = 0                                    // 1: 세팅, 2: 게임, 3: 결과
 var board = [8][8]Tile{}                             // 체스판(기물 포함)
 var turn = 0                                         // 0: 백, 1: 흑
 var possibleMoves = []Position{}                     // 비어있을 때: 클릭, 채워져 있을 때: 이동
 var selectedPiece = Position{}
-var whiteGoal = []Position{}
-var blackGoal = []Position{}
+var goal = make(map[int][]Position)
 
 func init() {
-	whiteGoal = initGoal(0)
-	blackGoal = initGoal(1)
+	goal[0] = initGoal(0)
+	goal[1] = initGoal(1)
 }
 
 var directions = map[string][]Position{
@@ -123,9 +122,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) { // 웹소켓 연�
 		Board: board,
 		Goal: func() []Position {
 			if playerColor[conn] == 0 {
-				return whiteGoal
+				return goal[0]
 			}
-			return blackGoal
+			return goal[1]
 		}(),
 	})
 	// 2명이 들어오기 전까지 기물을 놓을 수 없게 해야함
@@ -177,6 +176,7 @@ func placePiece(conn *websocket.Conn, message Message) {
 		}
 		conn.WriteJSON(setupMessage)
 		board[message.Position.Row][message.Position.Col].Piece = piece
+		board[message.Position.Row][message.Position.Col].Color = playerColor[conn]
 	} else {
 		log.Println("잘못된 위치 혹은 기물 없음")
 	}
@@ -207,7 +207,7 @@ func playState(conn *websocket.Conn, message Message) {
 	if message.Type == "click" {
 		if turn == playerColor[conn] {
 			if len(possibleMoves) == 0 { // 첫 클릭일 때
-				if board[message.Position.Row][message.Position.Col].Piece != "" {
+				if board[message.Position.Row][message.Position.Col].Piece != "" && checkColor(board[message.Position.Row][message.Position.Col].Piece) == playerColor[conn] {
 					possibleMoves = calculatePossibleMoves(board[message.Position.Row][message.Position.Col].Piece, message.Position.Row, message.Position.Col)
 					selectedPiece = message.Position
 					conn.WriteJSON(&click{
@@ -218,6 +218,7 @@ func playState(conn *websocket.Conn, message Message) {
 			} else { // 두번째 클릭일 때
 				for _, move := range possibleMoves {
 					if move.Row == message.Position.Row && move.Col == message.Position.Col {
+						paintPath(selectedPiece.Row, selectedPiece.Col, message.Position.Row, message.Position.Col, turn) // 경로 색칠
 						board[message.Position.Row][message.Position.Col].Piece = board[selectedPiece.Row][selectedPiece.Col].Piece
 						board[selectedPiece.Row][selectedPiece.Col].Piece = ""
 						possibleMoves = []Position{}
@@ -226,16 +227,17 @@ func playState(conn *websocket.Conn, message Message) {
 						// 3가지를 체크해야함
 						// 1. 둘러 싸인 기물이 있는지
 						// 2. 색칠을 완료했는지
+						if paintCheck(playerColor[conn]) {
+							log.Println(playerColor[conn], "승리")
+							gameState = 3
+						}
 						// 3. 폰이 움직이지 못하는지
 						break
 					}
 				}
 				if len(possibleMoves) != 0 {
 					possibleMoves = []Position{}
-					conn.WriteJSON(&Board{
-						Type:  "board",
-						Board: board,
-					})
+					broadcastBoard()
 				}
 			}
 		}
@@ -249,9 +251,9 @@ func broadcastBoard() {
 			Board: board,
 			Goal: func() []Position {
 				if playerColor[conn] == 0 {
-					return whiteGoal
+					return goal[0]
 				}
-				return blackGoal
+				return goal[1]
 			}(),
 		})
 	}
@@ -294,4 +296,111 @@ func initGoal(color int) []Position {
 		}
 	}
 	return goal
+}
+
+// 이동한 경로 색칠하는 함수 만들어야 함
+func paintPath(row, col, endRow, endCol, color int) {
+	// 이동 방향 계산
+	rowDir := 0
+	if endRow-row > 0 {
+		rowDir = 1
+	} else if endRow-row < 0 {
+		rowDir = -1
+	}
+
+	colDir := 0
+	if endCol-col > 0 {
+		colDir = 1
+	} else if endCol-col < 0 {
+		colDir = -1
+	}
+
+	// 현재 위치의 기물 타입 확인
+	piece := board[row][col].Piece
+	pieceType := piece[5:] // "white" 또는 "black" 제거
+
+	// 나이트의 경우 'ㄱ' 모양으로 경로 색칠
+	if pieceType == "Knight" {
+		board[row][col].Color = color // 시작점
+
+		// 2칸 이동 먼저 (수직 또는 수평)
+		if abs(endRow-row) == 2 {
+			// 수직으로 2칸 이동
+			intermediateRow := row + rowDir // 중간 칸
+			if board[intermediateRow][col].Piece == "" {
+				board[intermediateRow][col].Color = color
+			}
+
+			intermediateRow = row + rowDir*2 // 2칸 이동 후
+			if board[intermediateRow][col].Piece == "" {
+				board[intermediateRow][col].Color = color
+			}
+
+			// 그 다음 수평으로 1칸 이동
+			board[intermediateRow][endCol].Color = color
+		} else {
+			// 수평으로 2칸 이동
+			intermediateCol := col + colDir // 중간 칸
+			if board[row][intermediateCol].Piece == "" {
+				board[row][intermediateCol].Color = color
+			}
+
+			intermediateCol = col + colDir*2 // 2칸 이동 후
+			if board[row][intermediateCol].Piece == "" {
+				board[row][intermediateCol].Color = color
+			}
+
+			// 그 다음 수직으로 1칸 이동
+			board[endRow][intermediateCol].Color = color
+		}
+
+		return
+	}
+
+	// 룩, 비숍, 킹의 경우 경로 색칠
+	currentRow := row
+	currentCol := col
+
+	for currentRow != endRow || currentCol != endCol {
+		board[currentRow][currentCol].Color = color
+
+		// 대각선 이동 (비숍)
+		if rowDir != 0 && colDir != 0 {
+			currentRow += rowDir
+			currentCol += colDir
+			// 수직 이동 (룩)
+		} else if rowDir != 0 {
+			currentRow += rowDir
+			// 수평 이동 (룩)
+		} else if colDir != 0 {
+			currentCol += colDir
+		}
+	}
+	// 도착 지점 색칠
+	board[endRow][endCol].Color = color
+}
+
+func checkColor(piece string) int {
+	if piece[0:5] == "white" {
+		return 0
+	} else {
+		return 1
+	}
+}
+
+// 절대값 계산을 위한 헬퍼 함수 추가
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func paintCheck(color int) bool {
+	for _, position := range goal[color] {
+		if board[position.Row][position.Col].Color != color {
+			return false
+		}
+	}
+	return true
 }
