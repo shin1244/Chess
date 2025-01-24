@@ -24,6 +24,7 @@ type Board struct {
 	Type  string     `json:"type"`
 	Board [8][8]Tile `json:"board"`
 	Goal  []Position `json:"goal"`
+	Start bool       `json:"start"`
 }
 
 type Tile struct {
@@ -141,13 +142,16 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) { // 웹소켓 연�
 					}(),
 				})
 				gameState = 1
-				broadcastBoard()
+				broadcastBoard(true)
 			}
 		}
 		if gameState == 1 {
 			setupState(conn, message)
 		} else if gameState == 2 {
 			playState(conn, message)
+		} else if message.Type == "restart" {
+			log.Println("게임 재시작")
+			resetGame()
 		}
 	}
 }
@@ -284,7 +288,12 @@ func playState(conn *websocket.Conn, message Message) {
 	}
 }
 
-func broadcastBoard() {
+func broadcastBoard(start ...bool) {
+	startValue := false
+	if len(start) > 0 {
+		startValue = start[0]
+	}
+
 	for conn := range playerColor {
 		conn.WriteJSON(&Board{
 			Type:  "board",
@@ -295,9 +304,11 @@ func broadcastBoard() {
 				}
 				return goal[1]
 			}(),
+			Start: startValue,
 		})
 	}
 }
+
 func calculatePossibleMoves(piece string, row, col int) []Position {
 	pieceType := piece[5:]
 	possibleMoves := []Position{}
@@ -438,13 +449,17 @@ func abs(x int) int {
 
 // 목표를 모두 색칠했는지 확인
 func paintCheck() int {
-	for _, color := range playerColor {
-		for _, position := range goal[color] {
-			if board[position.Row][position.Col].Color != color {
-				return -1
+	for color := range playerColor {
+		allPainted := true
+		for _, position := range goal[playerColor[color]] {
+			if board[position.Row][position.Col].Color != playerColor[color] {
+				allPainted = false
+				break
 			}
 		}
-		return color
+		if allPainted {
+			return playerColor[color]
+		}
 	}
 	return -1
 }
@@ -528,6 +543,7 @@ func checkGameOver() {
 			conn.WriteJSON(&Message{
 				Type:        "gameOver",
 				PlayerColor: result,
+				Piece:       "King",
 			})
 		}
 	} else if result := paintCheck(); result != -1 {
@@ -536,24 +552,25 @@ func checkGameOver() {
 			conn.WriteJSON(&Message{
 				Type:        "gameOver",
 				PlayerColor: result,
+				Piece:       "Rook",
 			})
 		}
 	}
 }
 
-// func resetGame() {
-// 	initBoard()
-// 	goal[0] = initGoal(0)
-// 	goal[1] = initGoal(1)
-// 	playerColor = make(map[*websocket.Conn]int)
-// 	playerPiece = make(map[*websocket.Conn][]string)
-// 	playerPawn = make(map[*websocket.Conn]Position)
-// 	playerReady = []bool{}
-// 	gameState = 0
-// 	turn = 0
-// 	possibleMoves = []Position{}
-// 	selectedPiece = Position{}
-// }
+func resetGame() {
+	initBoard()
+	goal[0] = initGoal(0)
+	goal[1] = initGoal(1)
+	playerColor = make(map[*websocket.Conn]int)
+	playerPiece = make(map[*websocket.Conn][]string)
+	playerPawn = make(map[*websocket.Conn]Position)
+	playerReady = []bool{}
+	gameState = 0
+	turn = 0
+	possibleMoves = []Position{}
+	selectedPiece = Position{}
+}
 
 func countResult() {
 	for i := 0; i < 8; i++ {
@@ -570,6 +587,7 @@ func countResult() {
 			conn.WriteJSON(&Message{
 				Type:        "gameOver",
 				PlayerColor: 0,
+				Piece:       "Pawn",
 			})
 		}
 	} else {
@@ -577,6 +595,7 @@ func countResult() {
 			conn.WriteJSON(&Message{
 				Type:        "gameOver",
 				PlayerColor: 1,
+				Piece:       "Pawn",
 			})
 		}
 	}

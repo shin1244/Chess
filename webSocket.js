@@ -47,7 +47,13 @@ function connectWebSocket() {
 
             if (message.type === 'color') {
                 color = message.player_color; // 서버로부터 받은 색상 정보를 저장
+                // 게임 로그창 초기화
+                $('#logContent').empty();
+                $('#joinGame').text('기다리는 중...');
                 console.log(color);
+                const playerColor = message.player_color === 0 ? '백' : '흑';
+                addLogMessage(`당신은 ${playerColor}입니다.`);
+                addLogMessage('기다리는 중...');
             }
 
             if (message.type === 'spawn') {
@@ -56,7 +62,10 @@ function connectWebSocket() {
 
             if (message.type === 'board') {
                 const board = message.board;
-                console.log(board);
+                $('#joinGame').text('게임 참가하기');
+                if (message.start) {
+                    addLogMessage('상대방이 입장했습니다. 게임을 시작합니다.');
+                }
                 for (let row = 0; row < 8; row++) {
                     for (let col = 0; col < 8; col++) {
                         // 타일 배경색 채우기
@@ -108,12 +117,20 @@ function connectWebSocket() {
                         <div class="modal-content">
                             <h2>게임 종료</h2>
                             <p>${resultMessage}</p>
-                            <button onclick="location.reload()">새 게임</button>
+                            <button onclick="restartGame()">새 게임</button>
                         </div>
                     </div>
                 `;
                 
                 $('body').append(modalHtml);
+                const winner = message.player_color === 0 ? '백' : '흑';
+                if (message.piece === "Pawn") {
+                    addLogMessage(`게임 종료! ${winner}의 승리입니다! [시간 승리]`);
+                } else if (message.piece === "King") {
+                    addLogMessage(`게임 종료! ${winner}의 승리입니다! [체크 메이트]`);
+                } else if (message.piece === "Rook") {
+                    addLogMessage(`게임 종료! ${winner}의 승리입니다! [목표 완료]`);
+                }
             }
         };
     } catch (error) {
@@ -185,5 +202,35 @@ function drawInitialBoard() {
             context.lineWidth = 1;
             context.strokeRect(col * squareSize, row * squareSize, squareSize, squareSize);
         }
+    }
+}
+
+function restartGame() {
+    $('.modal').remove(); 
+    socket.send(JSON.stringify({ type: 'restart' }));
+}
+
+function addLogMessage(message, type = 'system') {
+    const logContent = $('#logContent');
+    const messageElement = $('<div>')
+        .addClass('log-message')
+        .addClass(type)
+        .text(message);
+    
+    logContent.append(messageElement);
+    logContent.scrollTop(logContent[0].scrollHeight);
+}
+
+function sendChatMessage() {
+    const input = $('#chatInput');
+    const message = input.val().trim();
+    
+    if (message) {
+        socket.send(JSON.stringify({
+            type: 'chat',
+            message: message,
+            player_color: color
+        }));
+        input.val('');
     }
 }
