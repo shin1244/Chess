@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -284,16 +285,37 @@ func calculatePossibleMoves(piece string, row, col int) []Position {
 
 func initGoal(color int) []Position {
 	goal := []Position{}
+	usedPositions := make(map[string]bool)
+
 	if color == 0 {
+		// 백팀 목표 설정
 		for i := 5; i > 0; i-- {
-			goal = append(goal, Position{Row: i, Col: rand.Intn(8)})
+			pos := getUniquePosition(i, usedPositions)
+			goal = append(goal, pos)
+			// 사용된 위치 기록
+			key := fmt.Sprintf("%d,%d", pos.Row, pos.Col)
+			usedPositions[key] = true
 		}
 	} else {
+		// 흑팀 목표 설정 (이미 사용된 위치 피함)
 		for i := 2; i < 6; i++ {
-			goal = append(goal, Position{Row: i, Col: rand.Intn(8)})
+			pos := getUniquePosition(i, usedPositions)
+			goal = append(goal, pos)
+			key := fmt.Sprintf("%d,%d", pos.Row, pos.Col)
+			usedPositions[key] = true
 		}
 	}
 	return goal
+}
+
+func getUniquePosition(row int, usedPositions map[string]bool) Position {
+	for {
+		col := rand.Intn(8)
+		key := fmt.Sprintf("%d,%d", row, col)
+		if !usedPositions[key] {
+			return Position{Row: row, Col: col}
+		}
+	}
 }
 
 // 이동한 경로 색칠하는 함수 만들어야 함
@@ -528,6 +550,7 @@ func countResult() {
 				Type:        "gameOver",
 				PlayerColor: 0,
 				Piece:       "Pawn",
+				Goals:       goal,
 			})
 		}
 	} else {
@@ -536,6 +559,7 @@ func countResult() {
 				Type:        "gameOver",
 				PlayerColor: 1,
 				Piece:       "Pawn",
+				Goals:       goal,
 			})
 		}
 	}

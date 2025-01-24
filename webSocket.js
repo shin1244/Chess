@@ -19,7 +19,6 @@ function connectWebSocket() {
         // WebSocket URL을 현재 호스트 기준으로 설정
         const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const wsUrl = wsProtocol + window.location.host + '/ws';  // ':30' 부분 제거
-        console.log("Connecting to WebSocket:", wsUrl);
         
         socket = new WebSocket(wsUrl);
 
@@ -50,7 +49,6 @@ function connectWebSocket() {
                 // 게임 로그창 초기화
                 $('#logContent').empty();
                 $('#joinGame').text('기다리는 중...');
-                console.log(color);
                 const playerColor = message.player_color === 0 ? '백' : '흑';
                 addLogMessage(`당신은 ${playerColor}입니다.`);
                 addLogMessage('기다리는 중...');
@@ -66,7 +64,6 @@ function connectWebSocket() {
                     addLogMessage('상대방이 입장했습니다. 게임을 시작합니다.');
                     $('#joinGame').text('게임 참가하기');
                 }
-                console.log(message.pawn_count);
                 $('#blackPawnCount').text(message.pawn_count[1]);
                 $('#whitePawnCount').text(message.pawn_count[0]);   
                 for (let row = 0; row < 8; row++) {
@@ -113,7 +110,21 @@ function connectWebSocket() {
 
             if (message.type === 'gameOver') {
                 let resultMessage = '';
-                console.log(message.player_color);
+                // goals가 2차원 배열이므로 플레이어의 목표 위치에 접근
+                if (message.goals && Array.isArray(message.goals)) {
+                    message.goals.forEach((playerGoals, playerIndex) => {
+                        playerGoals.forEach(goal => {
+                            context.strokeStyle = playerIndex === 0 ? "red" : "blue";
+                            context.lineWidth = 4;
+                            context.strokeRect(
+                                goal.col * squareSize + 2, 
+                                goal.row * squareSize + 2, 
+                                squareSize - 4, 
+                                squareSize - 4
+                            );
+                        });
+                    });
+                }
                 if (message.player_color === color) {
                     resultMessage = '축하합니다! 승리하셨습니다! 🎉'
                 } else {
