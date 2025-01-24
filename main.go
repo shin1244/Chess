@@ -225,7 +225,6 @@ func playState(conn *websocket.Conn, message Message) {
 						// 1. 둘러 싸인 기물이 있는지
 						// 2. 색칠을 완료했는지
 						// 3. 폰이 움직이지 못하는지
-						broadcastBoard()
 						checkGameOver()
 
 						break
@@ -506,6 +505,7 @@ func movePawn(conn *websocket.Conn) {
 }
 
 func checkGameOver() {
+	broadcastBoard()
 	if result := dieCheck(); result != -1 {
 		gameState = 3
 		for conn := range playerColor {
