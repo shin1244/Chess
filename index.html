@@ -10,12 +10,20 @@
 </head>
 <body>
     <div class="game-container">
+        <div class="left-section">
+            <button id="joinGame" class="join-btn">게임 참가하기</button>
+            <div class="score-container">
+                <div id="blackPawnCount">0</div>
+                <div class="vs-text">폰 이동 불가 횟수</div>
+                <div id="whitePawnCount">0</div>
+            </div>
+        </div>
         <canvas id="chessboard" width="640" height="640"></canvas>
         <div class="game-log">
             <div class="log-content" id="logContent"></div>
         </div>
     </div>
-    <button id="joinGame" class="join-btn">게임 참가하기</button>
+
     <script src="webSocket.js"></script>
 </body>
 </html>

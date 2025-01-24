@@ -62,10 +62,13 @@ function connectWebSocket() {
 
             if (message.type === 'board') {
                 const board = message.board;
-                $('#joinGame').text('게임 참가하기');
                 if (message.start) {
                     addLogMessage('상대방이 입장했습니다. 게임을 시작합니다.');
+                    $('#joinGame').text('게임 참가하기');
                 }
+                console.log(message.pawn_count);
+                $('#blackPawnCount').text(message.pawn_count[1]);
+                $('#whitePawnCount').text(message.pawn_count[0]);   
                 for (let row = 0; row < 8; row++) {
                     for (let col = 0; col < 8; col++) {
                         // 타일 배경색 채우기
@@ -84,16 +87,22 @@ function connectWebSocket() {
                         
                         // 목표 위치 표시
                         if (message.goal.some(pos => pos.row === row && pos.col === col)) {
-                            context.strokeStyle = "red";
-                            context.lineWidth = 3;
-                            context.strokeRect(col * squareSize, row * squareSize, squareSize, squareSize);
+                            context.strokeStyle = color === 0 ? "red" : "blue";
+                            context.lineWidth = 4;
+                            // 테두리를 약간 안쪽으로 그리기
+                            context.strokeRect(
+                                col * squareSize + 2, 
+                                row * squareSize + 2, 
+                                squareSize - 4, 
+                                squareSize - 4
+                            );
                         }
                     }
                 }
             }
 
             if (message.type === 'click') {
-                message.position.forEach(position => {
+                message.positions.forEach(position => {
                 context.beginPath();
                 context.arc(position.col * squareSize + squareSize/2, position.row * squareSize + squareSize/2, 10, 0, 2 * Math.PI);
                 context.fillStyle = "red";
