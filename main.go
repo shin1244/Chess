@@ -14,11 +14,12 @@ type Position struct {
 }
 
 type Message struct {
-	Type        string     `json:"type"`
-	PlayerColor int        `json:"player_color"`
-	Position    Position   `json:"position"`
-	Positions   []Position `json:"positions"`
-	Piece       string     `json:"piece"`
+	Type        string       `json:"type"`
+	PlayerColor int          `json:"player_color"`
+	Position    Position     `json:"position"`
+	Positions   []Position   `json:"positions"`
+	Piece       string       `json:"piece"`
+	Goals       [][]Position `json:"goals"`
 }
 
 type Board struct {
@@ -42,7 +43,7 @@ var board = [8][8]Tile{}                                  // 체스판(기물 �
 var turn = 0                                              // 0: 백, 1: 흑
 var possibleMoves = []Position{}                          // 비어있을 때: 클릭, 채워져 있을 때: 이동
 var selectedPiece = Position{}                            // 첫 클릭에서 선택한 기물 위치
-var goal = make(map[int][]Position)                       // 각 플레이어의 목표 위치
+var goal = [][]Position{{}, {}}                           // 각 플레이어의 목표 위치
 var pawnCount = []int{0, 0}                               // 폰 이동 불가 체크
 var result = 0                                            // 시간 승 색칠 확인
 var pieces = []string{"King", "Rook", "Bishop", "Knight"} // 체스말 종류
@@ -490,6 +491,7 @@ func checkGameOver() {
 				Type:        "gameOver",
 				PlayerColor: result,
 				Piece:       "King",
+				Goals:       goal,
 			})
 		}
 	} else if result := paintCheck(); result != -1 {
@@ -499,6 +501,7 @@ func checkGameOver() {
 				Type:        "gameOver",
 				PlayerColor: result,
 				Piece:       "Rook",
+				Goals:       goal,
 			})
 		}
 	} else {
