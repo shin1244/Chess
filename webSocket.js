@@ -1,7 +1,10 @@
 function loadPiece(piecePath) {
-    const img = new Image();
-    img.src = piecePath;
-    return img;
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load image: ${piecePath}`));
+        img.src = piecePath;
+    });
 }
 
 let socket;
@@ -54,22 +57,20 @@ function connectWebSocket() {
                 addLogMessage('기다리는 중...');
             }
 
-            if (message.type === 'spawn') {
-                context.drawImage(pieces[message.piece], message.position.col * squareSize, message.position.row * squareSize, squareSize, squareSize);
-            }
-
             if (message.type === 'board') {
                 const board = message.board;
                 if (message.start) {
                     addLogMessage('상대방이 입장했습니다. 게임을 시작합니다.');
                     $('#joinGame').text('게임 참가하기');
                 }
-                $('#blackPawnCount').text(message.pawn_count[1]);
-                $('#whitePawnCount').text(message.pawn_count[0]);   
+
+                // 현재 턴 표시를 위한 캔버스 패딩 영역 색상 설정
+                canvas.style.backgroundColor = message.turn === color ? '#32CD32' : '#FFFFFF';
+
                 for (let row = 0; row < 8; row++) {
                     for (let col = 0; col < 8; col++) {
                         // 타일 배경색 채우기
-                        context.fillStyle = boardColor[board[row][col].Color];
+                        context.fillStyle = boardColor[board[row][col].color];
                         context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
                         
                         // 타일 테두리 그리기
@@ -78,13 +79,13 @@ function connectWebSocket() {
                         context.strokeRect(col * squareSize, row * squareSize, squareSize, squareSize);
                         
                         // 체스 말 그리기
-                        if (board[row][col].Piece !== "") {
-                            context.drawImage(pieces[board[row][col].Piece], col * squareSize, row * squareSize, squareSize, squareSize);
+                        if (board[row][col].piece !== "") {
+                            context.drawImage(pieces[board[row][col].piece], col * squareSize, row * squareSize, squareSize, squareSize);
                         }
                         
                         // 목표 위치 표시
-                        if (message.goal.some(pos => pos.row === row && pos.col === col)) {
-                            context.strokeStyle = color === 0 ? "red" : "blue";
+                        if (board[row][col].goal !== -1) {
+                            context.strokeStyle = board[row][col].goal === 0 ? "red" : "blue";
                             context.lineWidth = 4;
                             // 테두리를 약간 안쪽으로 그리기
                             context.strokeRect(
@@ -158,55 +159,66 @@ function connectWebSocket() {
     }
 }
 
-$(document).ready(function() {
+$(document).ready(async function() {
     canvas = $('#chessboard')[0];
     context = canvas.getContext('2d');
     squareSize = 80;
-    pieces = {
-        whitePawn: loadPiece('assets/whitePawn.png'),
-        blackPawn: loadPiece('assets/blackPawn.png'),
-        whiteKnight: loadPiece('assets/whiteKnight.png'),
-        blackKnight: loadPiece('assets/blackKnight.png'),
-        whiteBishop: loadPiece('assets/whiteBishop.png'),
-        blackBishop: loadPiece('assets/blackBishop.png'),
-        whiteRook: loadPiece('assets/whiteRook.png'),
-        blackRook: loadPiece('assets/blackRook.png'),
-        whiteKing: loadPiece('assets/whiteKing.png'),
-        blackKing: loadPiece('assets/blackKing.png'),
-    };
-    boardColor = ['#FF69B4', '#4169E1', '#6b8e23', '#d3d3d3'];
-    color = null;
-
-    // 초기 체스판 그리기 추가
-    drawInitialBoard();
     
-    connectWebSocket();
-
-    $(canvas).on('click', function(event) {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        
-        // 클릭한 위치의 체스판 좌표 계산
-        const col = Math.floor(x / squareSize);
-        const row = Math.floor(y / squareSize);
-        
-        // 웹소켓으로 클릭 위치와 플레이어 색상 전송
-        const message = {
-            type: 'click',
-            player_color: color,
-            position: {
-                row: row,
-                col: col
-            },
+    // 캔버스 패딩을 8px로 증가
+    canvas.style.padding = '8px';
+    canvas.style.boxSizing = 'content-box';
+    canvas.style.border = '1px solid #000000';
+    
+    // 이미지 로딩을 비동기로 처리
+    try {
+        pieces = {
+            whitePawn: await loadPiece('assets/whitePawn.png'),
+            blackPawn: await loadPiece('assets/blackPawn.png'),
+            whiteKnight: await loadPiece('assets/whiteKnight.png'),
+            blackKnight: await loadPiece('assets/blackKnight.png'),
+            whiteBishop: await loadPiece('assets/whiteBishop.png'),
+            blackBishop: await loadPiece('assets/blackBishop.png'),
+            whiteRook: await loadPiece('assets/whiteRook.png'),
+            blackRook: await loadPiece('assets/blackRook.png'),
+            whiteKing: await loadPiece('assets/whiteKing.png'),
+            blackKing: await loadPiece('assets/blackKing.png'),
         };
         
-        socket.send(JSON.stringify(message));
-    });
+        boardColor = ['#FF69B4', '#4169E1', '#6b8e23', '#d3d3d3'];
+        color = null;
 
-    $('#joinGame').on('click', function() {
-        socket.send(JSON.stringify({ type: 'join' }));
-    });
+        // 초기 체스판 그리기
+        drawInitialBoard();
+        connectWebSocket();
+        
+        $(canvas).on('click', function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // 클릭한 위치의 체스판 좌표 계산
+            const col = Math.floor(x / squareSize);
+            const row = Math.floor(y / squareSize);
+            
+            // 웹소켓으로 클릭 위치와 플레이어 색상 전송
+            const message = {
+                type: 'click',
+                player_color: color,
+                position: {
+                    row: row,
+                    col: col
+                },
+            };
+            
+            socket.send(JSON.stringify(message));
+        });
+
+        $('#joinGame').on('click', function() {
+            socket.send(JSON.stringify({ type: 'join' }));
+        });
+    } catch (error) {
+        console.error('이미지 로딩 실패:', error);
+    }
 });
 
 // 초기 체스판을 그리는 함수 추가
