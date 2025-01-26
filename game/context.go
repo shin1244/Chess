@@ -1,7 +1,6 @@
 package game
 
 import (
-	"log"
 	"math/rand"
 
 	"github.com/gorilla/websocket"
@@ -9,19 +8,21 @@ import (
 
 // 좌표
 type Position struct {
-	Row int `json:"row"`
-	Col int `json:"col"`
+	Row   int    `json:"row"`
+	Col   int    `json:"col"`
+	Piece string `json:"piece"`
 }
 
 type Message struct {
-	Type        string     `json:"type"`
-	Board       [8][8]Tile `json:"board"`
-	PlayerColor int        `json:"player_color"`
-	Position    Position   `json:"position"`
-	Positions   []Position `json:"positions"`
-	Piece       string     `json:"piece"`
-	Start       bool       `json:"start"`
-	Turn        int        `json:"turn"`
+	Type          string     `json:"type"`
+	Board         [8][8]Tile `json:"board"`
+	PlayerColor   int        `json:"player_color"`
+	Position      Position   `json:"position"`
+	Positions     []Position `json:"positions"`
+	Piece         string     `json:"piece"`
+	Start         bool       `json:"start"`
+	Turn          int        `json:"turn"`
+	PrintingTiles [2]int     `json:"printing_tiles"`
 }
 
 type Tile struct {
@@ -38,6 +39,7 @@ type Context struct {
 	PossibleMoves []Position
 	SelectedPiece Position
 	Pieces        [][]string
+	PrintingTiles [2]int
 }
 
 var Directions = map[string][]Position{
@@ -55,11 +57,11 @@ var Directions = map[string][]Position{
 		{Row: -1, Col: 0}, {Row: 1, Col: 0},
 		{Row: 0, Col: -1}, {Row: 0, Col: 1},
 	},
-	"King": {
-		{Row: -1, Col: -1}, {Row: -1, Col: 0}, {Row: -1, Col: 1},
-		{Row: 0, Col: -1}, {Row: 0, Col: 1},
-		{Row: 1, Col: -1}, {Row: 1, Col: 0}, {Row: 1, Col: 1},
-	},
+	// "King": {
+	// 	{Row: -1, Col: -1}, {Row: -1, Col: 0}, {Row: -1, Col: 1},
+	// 	{Row: 0, Col: -1}, {Row: 0, Col: 1},
+	// 	{Row: 1, Col: -1}, {Row: 1, Col: 0}, {Row: 1, Col: 1},
+	// },
 }
 
 func InitGame() *Context {
@@ -72,8 +74,7 @@ func InitGame() *Context {
 	game.PossibleMoves = []Position{}                                                                    // 가능한 이동
 	game.SelectedPiece = Position{}                                                                      // 선택한 기물
 	game.Pieces = [][]string{{"King", "Rook", "Bishop", "Knight"}, {"King", "Rook", "Bishop", "Knight"}} // 체스말 종류
-
-	log.Println(game.Board)
+	game.PrintingTiles = [2]int{0, 0}                                                                    // 카운트 초기화
 
 	return game
 }
@@ -93,10 +94,10 @@ func initBoard(game *Context) {
 
 // 목표 초기화
 func initGoal(game *Context) {
-	for i := 2; i < 6; i++ {
+	for i := 3; i < 6; i++ {
 		game.Board[i][rand.Intn(8)].Goal = 0
 	}
-	for i := 2; i < 6; i++ {
+	for i := 2; i < 5; i++ {
 		col := rand.Intn(8)
 		for game.Board[i][col].Goal == 0 {
 			col = rand.Intn(8)

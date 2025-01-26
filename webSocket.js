@@ -22,15 +22,15 @@ function connectWebSocket() {
         // WebSocket URL을 현재 호스트 기준으로 설정
         const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const wsUrl = wsProtocol + window.location.host + '/ws';  // ':30' 부분 제거
-        
+
         socket = new WebSocket(wsUrl);
 
-        socket.onopen = function() {
+        socket.onopen = function () {
             console.log("WebSocket 연결됨");
             reconnectAttempts = 0;
         };
 
-        socket.onclose = function() {
+        socket.onclose = function () {
             console.log("WebSocket 연결 끊김");
             if (reconnectAttempts < maxReconnectAttempts) {
                 console.log("재연결 시도 중...");
@@ -39,12 +39,12 @@ function connectWebSocket() {
             }
         };
 
-        socket.onerror = function(error) {
+        socket.onerror = function (error) {
             console.error("WebSocket 에러:", error);
         };
 
         // 기존 메시지 핸들러 유지
-        socket.onmessage = function(event) {
+        socket.onmessage = function (event) {
             const message = JSON.parse(event.data);
 
             if (message.type === 'color') {
@@ -60,38 +60,46 @@ function connectWebSocket() {
             if (message.type === 'board') {
                 const board = message.board;
                 if (message.start) {
-                    addLogMessage('상대방이 입장했습니다. 게임을 시작합니다.');
                     $('#joinGame').text('게임 참가하기');
                 }
 
                 // 현재 턴 표시를 위한 캔버스 패딩 영역 색상 설정
                 canvas.style.backgroundColor = message.turn === color ? '#32CD32' : '#FFFFFF';
 
+                const isBlack = color === 1;
+                const transformedBoard = transformBoard(board, isBlack);
+
+                
                 for (let row = 0; row < 8; row++) {
                     for (let col = 0; col < 8; col++) {
                         // 타일 배경색 채우기
-                        context.fillStyle = boardColor[board[row][col].color];
+                        context.fillStyle = boardColor[transformedBoard[row][col].color];
                         context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
-                        
+
+                        // 타일 카운트 표시
+                        $('.white-tile-count').text(message.printing_tiles[0]);
+                        $('.black-tile-count').text(message.printing_tiles[1]);
+
                         // 타일 테두리 그리기
                         context.strokeStyle = '#000000';  // 검은색 테두리
                         context.lineWidth = 1;  // 얇은 선 두께
                         context.strokeRect(col * squareSize, row * squareSize, squareSize, squareSize);
-                        
+
                         // 체스 말 그리기
-                        if (board[row][col].piece !== "") {
-                            context.drawImage(pieces[board[row][col].piece], col * squareSize, row * squareSize, squareSize, squareSize);
+                        if (transformedBoard[row][col].piece !== "") {
+                            context.drawImage(pieces[transformedBoard[row][col].piece],
+                                col * squareSize, row * squareSize, squareSize, squareSize);
                         }
-                        
+
                         // 목표 위치 표시
-                        if (board[row][col].goal !== -1) {
-                            context.strokeStyle = board[row][col].goal === 0 ? "red" : "blue";
+                        if (transformedBoard[row][col].goal !== -1) {
+                            context.strokeStyle = transformedBoard[row][col].goal === 0 ? "red" : "blue";
                             context.lineWidth = 4;
                             // 테두리를 약간 안쪽으로 그리기
                             context.strokeRect(
-                                col * squareSize + 2, 
-                                row * squareSize + 2, 
-                                squareSize - 4, 
+                                col * squareSize + 2,
+                                row * squareSize + 2,
+                                squareSize - 4,
                                 squareSize - 4
                             );
                         }
@@ -101,11 +109,17 @@ function connectWebSocket() {
 
             if (message.type === 'click') {
                 message.positions.forEach(position => {
-                context.beginPath();
-                context.arc(position.col * squareSize + squareSize/2, position.row * squareSize + squareSize/2, 10, 0, 2 * Math.PI);
-                context.fillStyle = "red";
-                context.fill();
-                context.closePath();
+                    context.beginPath();
+                    const transformedPos = transformPosition(position.row, position.col, color === 1, position.piece);
+                    context.arc(
+                        transformedPos.col * squareSize + squareSize / 2,
+                        transformedPos.row * squareSize + squareSize / 2,
+                        10, 0, 2 * Math.PI
+                    );
+                    // 킹의 이동 가능 위치는 파란색, 그 외는 빨간색으로 표시
+                    context.fillStyle = transformedPos.piece.includes("King") ? "blue" : "red";
+                    context.fill();
+                    context.closePath();
                 });
             }
 
@@ -118,9 +132,9 @@ function connectWebSocket() {
                             context.strokeStyle = playerIndex === 0 ? "red" : "blue";
                             context.lineWidth = 4;
                             context.strokeRect(
-                                goal.col * squareSize + 2, 
-                                goal.row * squareSize + 2, 
-                                squareSize - 4, 
+                                goal.col * squareSize + 2,
+                                goal.row * squareSize + 2,
+                                squareSize - 4,
                                 squareSize - 4
                             );
                         });
@@ -142,7 +156,7 @@ function connectWebSocket() {
                         </div>
                     </div>
                 `;
-                
+
                 $('body').append(modalHtml);
                 const winner = message.player_color === 0 ? '백' : '흑';
                 if (message.piece === "Pawn") {
@@ -159,16 +173,16 @@ function connectWebSocket() {
     }
 }
 
-$(document).ready(async function() {
+$(document).ready(async function () {
     canvas = $('#chessboard')[0];
     context = canvas.getContext('2d');
     squareSize = 80;
-    
+
     // 캔버스 패딩을 8px로 증가
     canvas.style.padding = '8px';
     canvas.style.boxSizing = 'content-box';
     canvas.style.border = '1px solid #000000';
-    
+
     // 이미지 로딩을 비동기로 처리
     try {
         pieces = {
@@ -183,38 +197,36 @@ $(document).ready(async function() {
             whiteKing: await loadPiece('assets/whiteKing.png'),
             blackKing: await loadPiece('assets/blackKing.png'),
         };
-        
+
         boardColor = ['#FF69B4', '#4169E1', '#6b8e23', '#d3d3d3'];
         color = null;
 
         // 초기 체스판 그리기
         drawInitialBoard();
         connectWebSocket();
-        
-        $(canvas).on('click', function(event) {
+
+        $(canvas).on('click', function (event) {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
-            
-            // 클릭한 위치의 체스판 좌표 계산
-            const col = Math.floor(x / squareSize);
-            const row = Math.floor(y / squareSize);
-            
-            // 웹소켓으로 클릭 위치와 플레이어 색상 전송
+
+            let col = Math.floor(x / squareSize);
+            let row = Math.floor(y / squareSize);
+
+            const transformedPos = transformPosition(row, col, color === 1);
+
             const message = {
                 type: 'click',
                 player_color: color,
-                position: {
-                    row: row,
-                    col: col
-                },
+                position: transformedPos,
+                piece: transformedPos.piece
             };
-            
-            socket.send(JSON.stringify(message));
+
+            sendMessage(socket, message);
         });
 
-        $('#joinGame').on('click', function() {
-            socket.send(JSON.stringify({ type: 'join' }));
+        $('#joinGame').on('click', function () {
+            sendMessage(socket, { type: 'join' });
         });
     } catch (error) {
         console.error('이미지 로딩 실패:', error);
@@ -228,7 +240,7 @@ function drawInitialBoard() {
             // 체크무늬 패턴으로 타일 그리기
             context.fillStyle = (row + col) % 2 === 0 ? boardColor[2] : boardColor[3];
             context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
-            
+
             // 타일 테두리 그리기
             context.strokeStyle = '#000000';
             context.lineWidth = 1;
@@ -238,7 +250,7 @@ function drawInitialBoard() {
 }
 
 function restartGame() {
-    $('.modal').remove(); 
+    $('.modal').remove();
     socket.send(JSON.stringify({ type: 'restart' }));
 }
 
@@ -248,7 +260,7 @@ function addLogMessage(message, type = 'system') {
         .addClass('log-message')
         .addClass(type)
         .text(message);
-    
+
     logContent.append(messageElement);
     logContent.scrollTop(logContent[0].scrollHeight);
 }
@@ -256,7 +268,7 @@ function addLogMessage(message, type = 'system') {
 function sendChatMessage() {
     const input = $('#chatInput');
     const message = input.val().trim();
-    
+
     if (message) {
         socket.send(JSON.stringify({
             type: 'chat',
@@ -264,5 +276,32 @@ function sendChatMessage() {
             player_color: color
         }));
         input.val('');
+    }
+}
+
+// 보드 변환을 위한 유틸리티 함수들
+function transformBoard(board, isBlack) {
+    if (!isBlack) return board;
+
+    const transformedBoard = JSON.parse(JSON.stringify(board)); // 깊은 복사
+    transformedBoard.reverse();
+    transformedBoard.forEach(row => row.reverse());
+    return transformedBoard;
+}
+
+function transformPosition(row, col, isBlack, piece) {
+    if (!isBlack) return { row, col, piece };
+    return {
+        row: 7 - row,
+        col: 7 - col,
+        piece: piece
+    };
+}
+
+function sendMessage(socket, message) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(message));
+    } else {
+        console.log("WebSocket이 연결되지 않았거나 닫혔습니다.");
     }
 }
