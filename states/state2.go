@@ -20,6 +20,13 @@ func State2(g *game.Context, conn *websocket.Conn, message game.Message) {
 				if selectTilePiece != "" && selectTileColor == playerColor {
 					g.PossibleMoves = calculatePossibleMoves(g, selectTilePiece, message.Position.Row, message.Position.Col)
 					g.SelectedPiece = message.Position
+
+					// 킹의 이동 가능 위치 추가
+					kingMove := calculateKingMove(g, selectTilePiece, conn)
+					if kingMove != nil {
+						g.PossibleMoves = append(g.PossibleMoves, *kingMove)
+					}
+
 					conn.WriteJSON(&game.Message{
 						Type:      "click",
 						Positions: g.PossibleMoves,
@@ -72,7 +79,7 @@ func calculatePossibleMoves(g *game.Context, piece string, row, col int) []game.
 				newRow := row + direction.Row*i
 				newCol := col + direction.Col*i
 				if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && g.Board[newRow][newCol].Piece == "" {
-					possibleMoves = append(possibleMoves, game.Position{Row: newRow, Col: newCol})
+					possibleMoves = append(possibleMoves, game.Position{Row: newRow, Col: newCol, Piece: piece})
 				} else {
 					break
 				}
@@ -81,7 +88,7 @@ func calculatePossibleMoves(g *game.Context, piece string, row, col int) []game.
 			newRow := row + direction.Row
 			newCol := col + direction.Col
 			if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && g.Board[newRow][newCol].Piece == "" {
-				possibleMoves = append(possibleMoves, game.Position{Row: newRow, Col: newCol})
+				possibleMoves = append(possibleMoves, game.Position{Row: newRow, Col: newCol, Piece: piece})
 			}
 		}
 	}
@@ -336,11 +343,48 @@ func moveKing(g *game.Context, conn *websocket.Conn, piece string) bool {
 func getMoveDirection(piece string) []int {
 	pieceType := piece[5:]
 	if pieceType == "Rook" {
-		return []int{0, 1}
+		return []int{-1, 0}
 	} else if pieceType == "Bishop" {
 		return []int{0, -1}
 	} else if pieceType == "Knight" {
-		return []int{1, 0}
+		return []int{0, 1}
 	}
 	return []int{0, 0}
+}
+
+// 킹의 이동 가능 위치를 계산하는 함수
+func calculateKingMove(g *game.Context, piece string, conn *websocket.Conn) *game.Position {
+	color := g.PlayerColor[conn]
+	moveDirection := getMoveDirection(piece)
+
+	if color == 0 {
+		for i := 0; i < 8; i++ {
+			for j := 0; j < 8; j++ {
+				if g.Board[i][j].Piece == "whiteKing" {
+					newRow := i + moveDirection[0]
+					newCol := j + moveDirection[1]
+					// 보드 경계 체크
+					if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && g.Board[newRow][newCol].Piece == "" {
+						return &game.Position{Row: newRow, Col: newCol, Piece: "whiteKing"}
+					}
+					return nil
+				}
+			}
+		}
+	} else {
+		for i := 0; i < 8; i++ {
+			for j := 0; j < 8; j++ {
+				if g.Board[i][j].Piece == "blackKing" {
+					newRow := i - moveDirection[0]
+					newCol := j - moveDirection[1]
+					// 보드 경계 체크
+					if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && g.Board[newRow][newCol].Piece == "" {
+						return &game.Position{Row: newRow, Col: newCol, Piece: "blackKing"}
+					}
+					return nil
+				}
+			}
+		}
+	}
+	return nil
 }
