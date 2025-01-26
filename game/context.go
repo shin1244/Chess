@@ -9,8 +9,9 @@ import (
 
 // 좌표
 type Position struct {
-	Row int `json:"row"`
-	Col int `json:"col"`
+	Row   int    `json:"row"`
+	Col   int    `json:"col"`
+	Piece string `json:"piece"`
 }
 
 type Message struct {
