@@ -8,64 +8,61 @@ import (
 )
 
 func State2(g *game.Context, conn *websocket.Conn, message game.Message) {
-	if message.Type == "click" {
-		playerColor := g.PlayerColor[conn]
-		selectTilePiece := g.Board[message.Position.Row][message.Position.Col].Piece
-		if selectTilePiece == "whiteKing" || selectTilePiece == "blackKing" {
-			return
+	if message.Type == "click" && g.Turn == g.PlayerColor[conn] {
+		if len(g.PossibleMoves) == 0 {
+			clickSelect(g, conn, message)
+		} else {
+			clickMove(g, conn, message)
 		}
-		selectTileColor := g.Board[message.Position.Row][message.Position.Col].Color
-		if g.Turn == playerColor {
-			if len(g.PossibleMoves) == 0 { // 첫 클릭일 때
-				if selectTilePiece != "" && selectTileColor == playerColor {
-					g.PossibleMoves = calculatePossibleMoves(g, selectTilePiece, message.Position.Row, message.Position.Col)
-					g.SelectedPiece = message.Position
+	}
+}
 
-					// 킹의 이동 가능 위치 추가
-					kingMove := calculateKingMove(g, selectTilePiece, conn)
-					if kingMove != nil {
-						g.PossibleMoves = append(g.PossibleMoves, *kingMove)
-					}
+// 첫 클릭일 때 기물을 선택함
+func clickSelect(g *game.Context, conn *websocket.Conn, message game.Message) {
+	// 배열 접근 전에 범위 체크 추가
+	if message.Position.Row < 0 || message.Position.Row >= 8 ||
+		message.Position.Col < 0 || message.Position.Col >= 8 {
+		return
+	}
 
-					conn.WriteJSON(&game.Message{
-						Type:      "click",
-						Positions: g.PossibleMoves,
-					})
-				}
-			} else { // 두번째 클릭일 때
-				for _, move := range g.PossibleMoves {
-					if move.Row == message.Position.Row && move.Col == message.Position.Col {
-						paintPath(g, g.SelectedPiece.Row, g.SelectedPiece.Col, message.Position.Row, message.Position.Col, g.Turn)          // 경로 색칠
-						g.Board[message.Position.Row][message.Position.Col].Piece = g.Board[g.SelectedPiece.Row][g.SelectedPiece.Col].Piece // 보드에서 기물 이동
-						g.Board[g.SelectedPiece.Row][g.SelectedPiece.Col].Piece = ""
-						g.PossibleMoves = []game.Position{}
-						if moveKing(g, conn, g.Board[message.Position.Row][message.Position.Col].Piece) {
-							g.GameState = 3
-							for conn := range g.PlayerColor {
-								conn.WriteJSON(&game.Message{
-									Type:        "gameOver",
-									PlayerColor: g.Turn,
-									Piece:       "Pawn",
-								})
-							}
-						}
-						g.Turn = (g.Turn + 1) % 2
+	playerColor := g.PlayerColor[conn]
+	selectTilePiece := g.Board[message.Position.Row][message.Position.Col].Piece
+	selectTileColor := g.Board[message.Position.Row][message.Position.Col].Color
+	if selectTilePiece != "" && selectTileColor == playerColor {
+		g.PossibleMoves = calculatePossibleMoves(g, selectTilePiece, message.Position.Row, message.Position.Col)
+		g.SelectedPiece = message.Position
 
-						// 3가지를 체크해야함
-						// 1. 둘러 싸인 기물이 있는지
-						// 2. 색칠을 완료했는지
-						// 3. 폰이 움직이지 못하는지
-						checkGameOver(g)
-
-						break
-					}
-				}
-				if len(g.PossibleMoves) != 0 {
-					g.PossibleMoves = []game.Position{}
-					ws.BroadcastBoard(g, false)
-				}
-			}
+		// 킹의 이동 가능 위치 추가
+		kingMove := calculateKingMove(g, selectTilePiece, conn)
+		if kingMove != nil {
+			g.PossibleMoves = append(g.PossibleMoves, *kingMove)
 		}
+	}
+
+	conn.WriteJSON(&game.Message{
+		Type:      "click",
+		Positions: g.PossibleMoves,
+	})
+}
+
+// 두번째 클릭일 때 기물을 이동함
+func clickMove(g *game.Context, conn *websocket.Conn, message game.Message) {
+	for _, move := range g.PossibleMoves {
+		if move.Row == message.Position.Row && move.Col == message.Position.Col {
+			paintPath(g, g.SelectedPiece.Row, g.SelectedPiece.Col, message.Position.Row, message.Position.Col, g.Turn)          // 경로 색칠
+			g.Board[message.Position.Row][message.Position.Col].Piece = g.Board[g.SelectedPiece.Row][g.SelectedPiece.Col].Piece // 보드에서 기물 이동
+			g.Board[g.SelectedPiece.Row][g.SelectedPiece.Col].Piece = ""
+			g.PossibleMoves = []game.Position{}
+			checkGameOver(g, conn, message)
+			g.Turn = (g.Turn + 1) % 2
+			ws.BroadcastBoard(g, true)
+
+			break
+		}
+	}
+	if len(g.PossibleMoves) != 0 {
+		g.PossibleMoves = []game.Position{}
+		ws.BroadcastBoard(g, false)
 	}
 }
 
@@ -78,10 +75,12 @@ func calculatePossibleMoves(g *game.Context, piece string, row, col int) []game.
 			for i := 1; i < 8; i++ {
 				newRow := row + direction.Row*i
 				newCol := col + direction.Col*i
-				if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && g.Board[newRow][newCol].Piece == "" {
-					possibleMoves = append(possibleMoves, game.Position{Row: newRow, Col: newCol, Piece: piece})
-				} else {
-					break
+				if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 {
+					if g.Board[newRow][newCol].Piece == "" {
+						possibleMoves = append(possibleMoves, game.Position{Row: newRow, Col: newCol, Piece: piece})
+					} else {
+						break
+					}
 				}
 			}
 		} else {
@@ -185,27 +184,14 @@ func abs(x int) int {
 	return x
 }
 
-func checkGameOver(g *game.Context) {
-	if result := dieCheck(g); result != -1 {
-		g.GameState = 3
-		for conn := range g.PlayerColor {
-			conn.WriteJSON(&game.Message{
-				Type:        "gameOver",
-				PlayerColor: result,
-				Piece:       "King",
-			})
-		}
+func checkGameOver(g *game.Context, conn *websocket.Conn, message game.Message) {
+	if moveKing(g, conn, g.Board[message.Position.Row][message.Position.Col].Piece) {
+		ws.BroadcastGameOver(g, conn, "Pawn")
+	} else if result := dieCheck(g); result != -1 {
+		ws.BroadcastGameOver(g, conn, "King")
 	} else if result := paintCheck(g); result != -1 {
-		g.GameState = 3
-		for conn := range g.PlayerColor {
-			conn.WriteJSON(&game.Message{
-				Type:        "gameOver",
-				PlayerColor: result,
-				Piece:       "Rook",
-			})
-		}
+		ws.BroadcastGameOver(g, conn, "Rook")
 	}
-	ws.BroadcastBoard(g, true)
 }
 
 // 죽은 기물 확인 폰은 안죽음
@@ -252,51 +238,34 @@ func dieCheck(g *game.Context) int {
 
 // 목표를 모두 색칠했는지 확인
 func paintCheck(g *game.Context) int {
+	g.PrintingTiles = countPrintingTiles(g)
 	for i := 0; i < 2; i++ {
 		allPainted := true
 		for j := 0; j < 8; j++ {
 			for k := 0; k < 8; k++ {
-				if g.Board[j][k].Goal == i && g.Board[j][k].Color != i {
+				tileColor := g.Board[j][k].Color
+				if g.Board[j][k].Goal == i && tileColor != i {
 					allPainted = false
-					break
 				}
 			}
 		}
-		if allPainted {
+		if allPainted && g.PrintingTiles[i] > g.PrintingTiles[(i+1)%2] {
 			return i
 		}
 	}
 	return -1
 }
 
-func countResult(g *game.Context) {
-	result := 0
+func countPrintingTiles(g *game.Context) [2]int {
+	countPrintingTiles := [2]int{0, 0}
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
-			if g.Board[i][j].Color == 0 {
-				result += 1
-			} else if g.Board[i][j].Color == 1 {
-				result -= 1
+			if g.Board[i][j].Color < 2 {
+				countPrintingTiles[g.Board[i][j].Color]++
 			}
 		}
 	}
-	if result > 0 {
-		for conn := range g.PlayerColor {
-			conn.WriteJSON(&game.Message{
-				Type:        "gameOver",
-				PlayerColor: 0,
-				Piece:       "Pawn",
-			})
-		}
-	} else {
-		for conn := range g.PlayerColor {
-			conn.WriteJSON(&game.Message{
-				Type:        "gameOver",
-				PlayerColor: 1,
-				Piece:       "Pawn",
-			})
-		}
-	}
+	return countPrintingTiles
 }
 
 // 턴 종료 시 킹 이동

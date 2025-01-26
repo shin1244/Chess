@@ -69,11 +69,16 @@ function connectWebSocket() {
                 const isBlack = color === 1;
                 const transformedBoard = transformBoard(board, isBlack);
 
+                
                 for (let row = 0; row < 8; row++) {
                     for (let col = 0; col < 8; col++) {
                         // 타일 배경색 채우기
                         context.fillStyle = boardColor[transformedBoard[row][col].color];
                         context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
+
+                        // 타일 카운트 표시
+                        $('.white-tile-count').text(message.printing_tiles[0]);
+                        $('.black-tile-count').text(message.printing_tiles[1]);
 
                         // 타일 테두리 그리기
                         context.strokeStyle = '#000000';  // 검은색 테두리
@@ -217,11 +222,11 @@ $(document).ready(async function () {
                 piece: transformedPos.piece
             };
 
-            socket.send(JSON.stringify(message));
+            sendMessage(socket, message);
         });
 
         $('#joinGame').on('click', function () {
-            socket.send(JSON.stringify({ type: 'join' }));
+            sendMessage(socket, { type: 'join' });
         });
     } catch (error) {
         console.error('이미지 로딩 실패:', error);
@@ -291,4 +296,12 @@ function transformPosition(row, col, isBlack, piece) {
         col: 7 - col,
         piece: piece
     };
+}
+
+function sendMessage(socket, message) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(message));
+    } else {
+        console.log("WebSocket이 연결되지 않았거나 닫혔습니다.");
+    }
 }

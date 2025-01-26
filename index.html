@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/static/styles.css">
     <title>체스 게임</title>
 </head>
 <body>
@@ -13,9 +13,9 @@
         <div class="left-section">
             <button id="joinGame" class="join-btn">게임 참가하기</button>
             <div class="score-container">
-                <div id="blackPawnCount">0</div>
-                <div class="vs-text">폰 이동 불가 횟수</div>
-                <div id="whitePawnCount">0</div>
+                <div class="white-tile-count"><br>0</div>
+                <div class="vs-text">VS</div>
+                <div class="black-tile-count"><br>0</div>
             </div>
         </div>
         <canvas id="chessboard" width="640" height="640"></canvas>

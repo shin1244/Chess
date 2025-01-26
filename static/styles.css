@@ -128,26 +128,54 @@ body {
     margin-top: 20px;
 }
 
-#blackPawnCount, #whitePawnCount {
+.black-tile-count {
     width: 120px;
     height: 120px;
-    background-color: white;
-    border: 6px solid #333;
+    border: 6px solid #4169E1;
     border-radius: 15px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 36px;
+    font-size: 24px;
     font-weight: bold;
     color: #333;
+    margin: 10px 0;
+    padding: 10px;
+    text-align: center;
+    background-color: white;
+}
+
+.white-tile-count {
+    width: 120px;
+    height: 120px;
+    border: 6px solid #FF69B4;
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin: 10px 0;
+    padding: 10px;
+    text-align: center;
+    background-color: white;
 }
 
 .vs-text {
-    font-size: 32px;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
     font-weight: bold;
     color: #333;
-    margin: 20px 0;
+    margin: 10px 0;
+    padding: 10px;
+    text-align: center;
 }
 
 .game-log {
