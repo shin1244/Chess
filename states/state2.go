@@ -301,8 +301,8 @@ func moveKing(g *game.Context, conn *websocket.Conn, piece string) bool {
 		for i := 0; i < 8; i++ {
 			for j := 0; j < 8; j++ {
 				if g.Board[i][j].Piece == "whiteKing" {
-					newRow := i - moveDirection[0]
-					newCol := j - moveDirection[1]
+					newRow := i + moveDirection[0]
+					newCol := j + moveDirection[1]
 					// 보드 경계 체크
 					if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && g.Board[newRow][newCol].Piece == "" {
 						g.Board[i][j].Piece = ""
@@ -317,8 +317,8 @@ func moveKing(g *game.Context, conn *websocket.Conn, piece string) bool {
 		for i := 0; i < 8; i++ {
 			for j := 0; j < 8; j++ {
 				if g.Board[i][j].Piece == "blackKing" {
-					newRow := i + moveDirection[0]
-					newCol := j + moveDirection[1]
+					newRow := i - moveDirection[0]
+					newCol := j - moveDirection[1]
 					// 보드 경계 체크
 					if newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && g.Board[newRow][newCol].Piece == "" {
 						g.Board[i][j].Piece = ""
@@ -335,11 +335,11 @@ func moveKing(g *game.Context, conn *websocket.Conn, piece string) bool {
 
 func getMoveDirection(piece string) []int {
 	pieceType := piece[5:]
-	if pieceType == "Knight" {
+	if pieceType == "Rook" {
 		return []int{0, 1}
 	} else if pieceType == "Bishop" {
 		return []int{0, -1}
-	} else if pieceType == "Rook" {
+	} else if pieceType == "Knight" {
 		return []int{1, 0}
 	}
 	return []int{0, 0}

@@ -60,17 +60,19 @@ function connectWebSocket() {
             if (message.type === 'board') {
                 const board = message.board;
                 if (message.start) {
-                    addLogMessage('상대방이 입장했습니다. 게임을 시작합니다.');
                     $('#joinGame').text('게임 참가하기');
                 }
 
                 // 현재 턴 표시를 위한 캔버스 패딩 영역 색상 설정
                 canvas.style.backgroundColor = message.turn === color ? '#32CD32' : '#FFFFFF';
 
+                const isBlack = color === 1;
+                const transformedBoard = transformBoard(board, isBlack);
+
                 for (let row = 0; row < 8; row++) {
                     for (let col = 0; col < 8; col++) {
                         // 타일 배경색 채우기
-                        context.fillStyle = boardColor[board[row][col].color];
+                        context.fillStyle = boardColor[transformedBoard[row][col].color];
                         context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
                         
                         // 타일 테두리 그리기
@@ -79,13 +81,14 @@ function connectWebSocket() {
                         context.strokeRect(col * squareSize, row * squareSize, squareSize, squareSize);
                         
                         // 체스 말 그리기
-                        if (board[row][col].piece !== "") {
-                            context.drawImage(pieces[board[row][col].piece], col * squareSize, row * squareSize, squareSize, squareSize);
+                        if (transformedBoard[row][col].piece !== "") {
+                            context.drawImage(pieces[transformedBoard[row][col].piece], 
+                                col * squareSize, row * squareSize, squareSize, squareSize);
                         }
                         
                         // 목표 위치 표시
-                        if (board[row][col].goal !== -1) {
-                            context.strokeStyle = board[row][col].goal === 0 ? "red" : "blue";
+                        if (transformedBoard[row][col].goal !== -1) {
+                            context.strokeStyle = transformedBoard[row][col].goal === 0 ? "red" : "blue";
                             context.lineWidth = 4;
                             // 테두리를 약간 안쪽으로 그리기
                             context.strokeRect(
@@ -101,11 +104,16 @@ function connectWebSocket() {
 
             if (message.type === 'click') {
                 message.positions.forEach(position => {
-                context.beginPath();
-                context.arc(position.col * squareSize + squareSize/2, position.row * squareSize + squareSize/2, 10, 0, 2 * Math.PI);
-                context.fillStyle = "red";
-                context.fill();
-                context.closePath();
+                    context.beginPath();
+                    const transformedPos = transformPosition(position.row, position.col, color === 1);
+                    context.arc(
+                        transformedPos.col * squareSize + squareSize/2, 
+                        transformedPos.row * squareSize + squareSize/2, 
+                        10, 0, 2 * Math.PI
+                    );
+                    context.fillStyle = "red";
+                    context.fill();
+                    context.closePath();
                 });
             }
 
@@ -196,18 +204,15 @@ $(document).ready(async function() {
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
             
-            // 클릭한 위치의 체스판 좌표 계산
-            const col = Math.floor(x / squareSize);
-            const row = Math.floor(y / squareSize);
+            let col = Math.floor(x / squareSize);
+            let row = Math.floor(y / squareSize);
             
-            // 웹소켓으로 클릭 위치와 플레이어 색상 전송
+            const transformedPos = transformPosition(row, col, color === 1);
+
             const message = {
                 type: 'click',
                 player_color: color,
-                position: {
-                    row: row,
-                    col: col
-                },
+                position: transformedPos
             };
             
             socket.send(JSON.stringify(message));
@@ -265,4 +270,22 @@ function sendChatMessage() {
         }));
         input.val('');
     }
+}
+
+// 보드 변환을 위한 유틸리티 함수들
+function transformBoard(board, isBlack) {
+    if (!isBlack) return board;
+    
+    const transformedBoard = JSON.parse(JSON.stringify(board)); // 깊은 복사
+    transformedBoard.reverse();
+    transformedBoard.forEach(row => row.reverse());
+    return transformedBoard;
+}
+
+function transformPosition(row, col, isBlack) {
+    if (!isBlack) return { row, col };
+    return {
+        row: 7 - row,
+        col: 7 - col
+    };
 }
