@@ -104,3 +104,8 @@ func initGoal(game *Context) {
 		game.Board[i][col].Goal = 1
 	}
 }
+
+func InitRooms() map[int]*Context {
+	AllRooms := make(map[int]*Context)
+	return AllRooms
+}

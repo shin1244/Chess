@@ -11,11 +11,11 @@ import (
 
 func main() {
 	log.Println("서버 시작: http://localhost:30")
-	g := game.InitGame()
-	states.State3(g, game.Message{Type: "restart"})
+	rooms := game.InitRooms()
+	states.State3(game.Message{Type: "restart"})
 	http.Handle("/", http.FileServer(http.Dir(".")))
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		HandleWebSocket(g, w, r)
+		HandleWebSocket(rooms, w, r)
 	})
 
 	if err := http.ListenAndServe(":30", nil); err != nil {
@@ -29,7 +29,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func HandleWebSocket(g *game.Context, w http.ResponseWriter, r *http.Request) { // 웹소켓 연결
+func HandleWebSocket(rooms map[int]*game.Context, w http.ResponseWriter, r *http.Request) { // 웹소켓 연결
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -44,15 +44,14 @@ func HandleWebSocket(g *game.Context, w http.ResponseWriter, r *http.Request) { 
 			log.Println(err)
 			break
 		}
-		switch g.GameState {
-		case 0:
-			states.State0(g, conn, message)
+		states.State0(rooms, conn, message)
+		switch rooms[roomId].GameState {
 		case 1:
-			states.State1(g, conn, message)
+			states.State1(rooms[roomId], conn, message)
 		case 2:
-			states.State2(g, conn, message)
+			states.State2(rooms[roomId], conn, message)
 		case 3:
-			states.State3(g, message)
+			states.State3(rooms[roomId], message)
 		}
 	}
 }
