@@ -20,7 +20,7 @@ type Message struct {
 	Position      Position   `json:"position"`
 	Positions     []Position `json:"positions"`
 	Piece         string     `json:"piece"`
-	Start         bool       `json:"start"`
+	SoundType     int        `json:"sound_type"`
 	Turn          int        `json:"turn"`
 	PrintingTiles [2]int     `json:"printing_tiles"`
 }

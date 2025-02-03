@@ -6,12 +6,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func BroadcastBoard(g *game.Context, start bool) {
+func BroadcastBoard(g *game.Context, soundType int) {
 	for conn := range g.PlayerColor {
 		conn.WriteJSON(&game.Message{
 			Type:          "board",
 			Board:         g.Board,
-			Start:         start,
+			SoundType:     soundType,
 			PlayerColor:   g.PlayerColor[conn],
 			Turn:          g.Turn,
 			PrintingTiles: g.PrintingTiles,

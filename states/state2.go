@@ -55,14 +55,14 @@ func clickMove(g *game.Context, conn *websocket.Conn, message game.Message) {
 			g.PossibleMoves = []game.Position{}
 			checkGameOver(g, conn, message)
 			g.Turn = (g.Turn + 1) % 2
-			ws.BroadcastBoard(g, true)
+			ws.BroadcastBoard(g, 3)
 
 			break
 		}
 	}
 	if len(g.PossibleMoves) != 0 {
 		g.PossibleMoves = []game.Position{}
-		ws.BroadcastBoard(g, false)
+		ws.BroadcastBoard(g, 0)
 	}
 }
 

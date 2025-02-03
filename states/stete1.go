@@ -13,7 +13,7 @@ func State1(g *game.Context, conn *websocket.Conn, message game.Message) {
 	if message.Type == "click" && message.PlayerColor == g.Turn {
 		if placePiece(g, conn, message) {
 			g.Turn = (g.Turn + 1) % 2
-			ws.BroadcastBoard(g, false)
+			ws.BroadcastBoard(g, 2)
 		}
 		if len(g.Pieces[0]) == 0 && len(g.Pieces[1]) == 0 {
 			g.GameState = 2

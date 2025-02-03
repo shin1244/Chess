@@ -10,5 +10,5 @@ func State3(g *game.Context, message game.Message) {
 		return
 	}
 	*g = *game.InitGame()
-	ws.BroadcastBoard(g, false)
+	ws.BroadcastBoard(g, 0)
 }

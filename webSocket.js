@@ -59,9 +59,6 @@ function connectWebSocket() {
 
             if (message.type === 'board') {
                 const board = message.board;
-                if (message.start) {
-                    $('#joinGame').text('게임 참가하기');
-                }
 
                 // 현재 턴 표시를 위한 캔버스 패딩 영역 색상 설정
                 canvas.style.backgroundColor = message.turn === color ? '#32CD32' : '#FFFFFF';
@@ -75,6 +72,14 @@ function connectWebSocket() {
                         // 타일 배경색 채우기
                         context.fillStyle = boardColor[transformedBoard[row][col].color];
                         context.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
+
+                        if (message.sound_type === 1) {
+                            startSound.play();
+                        } else if (message.sound_type === 2) {
+                            pieceSound.play();
+                        } else if (message.sound_type === 3) {
+                            moveSound.play();
+                        }
 
                         // 타일 카운트 표시
                         $('.white-tile-count').text(message.printing_tiles[0]);
@@ -166,6 +171,7 @@ function connectWebSocket() {
                 } else if (message.piece === "Rook") {
                     addLogMessage(`게임 종료! ${winner}의 승리입니다! [목표 완료]`);
                 }
+                gameOverSound.play();
             }
         };
     } catch (error) {
@@ -185,6 +191,14 @@ $(document).ready(async function () {
 
     // 이미지 로딩을 비동기로 처리
     try {
+        moveSound = new Audio('assets/spray.mp3');
+        moveSound.volume = 0.5;
+        gameOverSound = new Audio('assets/blop.mp3');
+        gameOverSound.volume = 0.5;
+        startSound = new Audio('assets/board.mp3');
+        startSound.volume = 0.5;
+        pieceSound = new Audio('assets/piece.mp3');
+
         pieces = {
             whitePawn: await loadPiece('assets/whitePawn.png'),
             blackPawn: await loadPiece('assets/blackPawn.png'),

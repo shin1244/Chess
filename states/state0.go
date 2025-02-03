@@ -26,6 +26,6 @@ func State0(g *game.Context, conn *websocket.Conn, message game.Message) {
 			Board: g.Board,
 		})
 		g.GameState = 1
-		ws.BroadcastBoard(g, true)
+		ws.BroadcastBoard(g, 1)
 	}
 }
