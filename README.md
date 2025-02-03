@@ -1,16 +1,33 @@
-## Splat Chess
+# Splat Chess
 닌텐도의 게임 스플래툰에서 영감을 받아 제작한 게임입니다.
 색칠과 체스 그리고 바둑을 결합하여 구현 해보았습니다.
 
-## 진행
-1. 기물들의 움직임은 체스의 기물과 동일합니다.
-2. 내 기물들이 움직인 경로의 타일이 색칠됩니다.
-3. 턴이 끝나면 정해진 방향으로 킹이 한칸 움직입니다.
+# 진행
+<b>1. 준비 단계에서는 기물을 내가 원하는 위치에 설치할 수 있습니다. 4개의 기물을 양쪽 플레이어 모두 설치하면 게임이 시작됩니다.</b>
 
-## 목표
-1. 상대 왕을 처치하세요
-2. 내 왕을 보드 반대편까지 옮기세요
-3. 나의 목표 타일을 모두 색칠하고 상대편보다 많은 타일을 색칠하세요
+![set](https://github.com/user-attachments/assets/a4074b5e-2e24-463b-82cc-7e97bbcfec30)
+
+<b>2. 내 기물들이 움직인 경로의 타일이 색칠됩니다. 기물들의 움직임은 체스의 기물과 동일합니다. 턴이 끝나면 정해진 방향으로 킹이 한칸 움직입니다.</b>
+
+![move](https://github.com/user-attachments/assets/5f08ef3a-65fe-484e-988d-1b05372666ad)
+
+<b>3. 상대 기물 주변 타일을 모두 색칠하여 기물을 잡을 수 있습니다.</b>
+
+![cap](https://github.com/user-attachments/assets/f6ff4d90-81d0-4a04-8801-95897915436c)
+
+---
+# 목표
+<b>1. 상대 왕을 처치하세요!</b>
+
+![kingwin](https://github.com/user-attachments/assets/511040fa-a06f-4b00-ac0a-3c2aeeb83302)
+
+<b>2. 나의 왕을 보드 반대편까지 옮기세요!</b>
+
+![time](https://github.com/user-attachments/assets/a40857d8-7ca0-4407-a89c-529eaa8b4697)
+
+<b>3. 나의 목표 타일을 모두 색칠하고 상대편보다 많은 타일을 색칠하세요!</b>
+
+![scwin](https://github.com/user-attachments/assets/f3c44f69-ea67-4d4e-9bc4-48aa1b4cfac2)
 
 ---
 
