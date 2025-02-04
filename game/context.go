@@ -1,6 +1,7 @@
 package game
 
 import (
+	cryptorand "crypto/rand"
 	"math/rand"
 
 	"github.com/gorilla/websocket"
@@ -23,6 +24,7 @@ type Message struct {
 	SoundType     int        `json:"sound_type"`
 	Turn          int        `json:"turn"`
 	PrintingTiles [2]int     `json:"printing_tiles"`
+	KingMove      Position   `json:"king_move"`
 }
 
 type Tile struct {
@@ -63,6 +65,26 @@ var Directions = map[string][]Position{
 	// 	{Row: 1, Col: -1}, {Row: 1, Col: 0}, {Row: 1, Col: 1},
 	// },
 }
+
+func GenerateRoomCode() string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const codeLength = 6
+
+	b := make([]byte, codeLength)
+	if _, err := cryptorand.Read(b); err != nil {
+		panic(err)
+	}
+
+	code := make([]byte, codeLength)
+	for i := range b {
+		code[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(code)
+}
+
+var GameRooms = make(map[string]*Context)
+var PlayerRooms = make(map[*websocket.Conn]string)
+var EmptyRoom string = ""
 
 func InitGame() *Context {
 	game := &Context{}

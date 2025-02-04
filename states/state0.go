@@ -9,12 +9,26 @@ import (
 )
 
 // 유저가 게임에 참여하기를 기다립니다. 2명이 참여하면 state1로 이동합니다.
-func State0(g *game.Context, conn *websocket.Conn, message game.Message) {
-	if message.Type != "join" {
-		return
-	}
+func State0(conn *websocket.Conn) {
 	log.Println("게임 참가", conn.RemoteAddr())
-	g.PlayerColor[conn] = len(g.PlayerColor)
+	var g *game.Context
+
+	if game.EmptyRoom == "" {
+		roomCode := game.GenerateRoomCode()
+		g = game.InitGame()
+		g.PlayerColor[conn] = 0
+		game.GameRooms[roomCode] = g
+		game.PlayerRooms[conn] = roomCode
+		game.EmptyRoom = roomCode
+		log.Println("방 생성", roomCode)
+	} else {
+		game.PlayerRooms[conn] = game.EmptyRoom
+		g = game.GameRooms[game.EmptyRoom]
+		g.PlayerColor[conn] = 1
+
+		log.Println("방 입장", game.EmptyRoom)
+		game.EmptyRoom = ""
+	}
 
 	conn.WriteJSON(&game.Message{
 		Type:        "color",

@@ -20,6 +20,7 @@ func State2(g *game.Context, conn *websocket.Conn, message game.Message) {
 // 첫 클릭일 때 기물을 선택함
 func clickSelect(g *game.Context, conn *websocket.Conn, message game.Message) {
 	// 배열 접근 전에 범위 체크 추가
+	var kingMove *game.Position
 	if message.Position.Row < 0 || message.Position.Row >= 8 ||
 		message.Position.Col < 0 || message.Position.Col >= 8 {
 		return
@@ -33,16 +34,19 @@ func clickSelect(g *game.Context, conn *websocket.Conn, message game.Message) {
 		g.SelectedPiece = message.Position
 
 		// 킹의 이동 가능 위치 추가
-		kingMove := calculateKingMove(g, selectTilePiece, conn)
-		if kingMove != nil {
-			g.PossibleMoves = append(g.PossibleMoves, *kingMove)
-		}
+		kingMove = calculateKingMove(g, selectTilePiece, conn)
 	}
 
-	conn.WriteJSON(&game.Message{
+	m := &game.Message{
 		Type:      "click",
 		Positions: g.PossibleMoves,
-	})
+	}
+
+	if kingMove != nil {
+		m.KingMove = *kingMove
+	}
+
+	conn.WriteJSON(&m)
 }
 
 // 두번째 클릭일 때 기물을 이동함
