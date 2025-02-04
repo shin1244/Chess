@@ -8,6 +8,10 @@ import (
 )
 
 func State2(g *game.Context, conn *websocket.Conn, message game.Message) {
+	if len(g.PlayerColor) != 2 {
+		ws.BroadcastGameOver(g, conn, "King")
+		return
+	}
 	if message.Type == "click" && g.Turn == g.PlayerColor[conn] {
 		if len(g.PossibleMoves) == 0 {
 			clickSelect(g, conn, message)
