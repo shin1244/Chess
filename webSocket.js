@@ -122,10 +122,23 @@ function connectWebSocket() {
                         10, 0, 2 * Math.PI
                     );
                     // 킹의 이동 가능 위치는 파란색, 그 외는 빨간색으로 표시
-                    context.fillStyle = transformedPos.piece.includes("King") ? "blue" : "red";
+                    context.fillStyle = "red";
                     context.fill();
                     context.closePath();
                 });
+                if (message.king_move.row !== 0 || message.king_move.col !== 0){
+                    const kingMove = message.king_move;
+                    const transformedPos = transformPosition(kingMove.row, kingMove.col, color === 1, kingMove.piece);
+                    context.beginPath();
+                    context.arc(
+                        transformedPos.col * squareSize + squareSize / 2,
+                        transformedPos.row * squareSize + squareSize / 2,
+                        10, 0, 2 * Math.PI
+                    );
+                    context.fillStyle = "blue";
+                    context.fill();
+                    context.closePath();
+                }
             }
 
             if (message.type === 'gameOver') {
@@ -227,13 +240,16 @@ $(document).ready(async function () {
             let col = Math.floor(x / squareSize);
             let row = Math.floor(y / squareSize);
 
+            // piece 정보 제거 (서버에서 처리하도록)
             const transformedPos = transformPosition(row, col, color === 1);
 
             const message = {
                 type: 'click',
                 player_color: color,
-                position: transformedPos,
-                piece: transformedPos.piece
+                position: {
+                    row: transformedPos.row,
+                    col: transformedPos.col
+                }
             };
 
             sendMessage(socket, message);

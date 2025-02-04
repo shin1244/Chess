@@ -28,5 +28,12 @@ func BroadcastGameOver(g *game.Context, conn *websocket.Conn, piece string) {
 			PrintingTiles: g.PrintingTiles,
 		})
 	}
-	g.GameState = 3
+
+	for conn := range g.PlayerColor {
+		delete(g.PlayerColor, conn)
+	}
+	delete(game.GameRooms, game.PlayerRooms[conn])
+	delete(game.PlayerRooms, conn)
+
+	g.GameState = 0
 }
